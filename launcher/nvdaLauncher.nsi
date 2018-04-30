@@ -89,6 +89,10 @@ SectionEnd
 var hmci
 
 Function PlaySound
+; Check if silent installation, return if so.
+IfSilent +2
+Return
+
 ; Retrieve the file to play
 pop $9
 System::Call 'msvfw32.dll::MCIWndCreate(i 0, i 0, i 0x0070, t "$9") i .r0'
