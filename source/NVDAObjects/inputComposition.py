@@ -5,7 +5,7 @@ import characterProcessing
 import speech
 import config
 from NVDAObjects.window import Window
-from behaviors import EditableTextWithAutoSelectDetection, CandidateItem as CandidateItemBehavior 
+from .behaviors import EditableTextWithAutoSelectDetection, CandidateItem as CandidateItemBehavior 
 from textInfos.offsets import OffsetsTextInfo
 
 def calculateInsertedChars(oldComp,newComp):
@@ -14,11 +14,11 @@ def calculateInsertedChars(oldComp,newComp):
 	minLen=min(oldLen,newLen)
 	diffStart=0
 	diffEnd=newLen
-	for index in xrange(minLen):
+	for index in range(minLen):
 		if newComp[index]!=oldComp[index]:
 			break
 		diffStart=index+1
-	for index in xrange(minLen,0,-1):
+	for index in range(minLen,0,-1):
 		backIndex=index-minLen-1
 		if newComp[backIndex]!=oldComp[backIndex]:
 			break
@@ -27,6 +27,7 @@ def calculateInsertedChars(oldComp,newComp):
 	return newComp[diffStart:diffEnd]
 
 class InputCompositionTextInfo(OffsetsTextInfo):
+	encoding = None
 
 	def _getSelectionOffsets(self):
 		return self.obj.readingSelectionOffsets if self.obj.isReading else self.obj.compositionSelectionOffsets
@@ -45,7 +46,7 @@ class InputComposition(EditableTextWithAutoSelectDetection,Window):
 	TextInfo=InputCompositionTextInfo
 	# Translators: The label for a 'composition' Window that appears when the user is typing one or more east-Asian characters into a document. 
 	name=_("Composition")
-	role=controlTypes.ROLE_EDITABLETEXT
+	role=controlTypes.Role.EDITABLETEXT
 	next=None
 	previous=None
 	firstChild=None
@@ -71,7 +72,12 @@ class InputComposition(EditableTextWithAutoSelectDetection,Window):
 		if (config.conf["keyboard"]["speakTypedCharacters"] or config.conf["keyboard"]["speakTypedWords"]):
 			newText=calculateInsertedChars(oldString.strip(u'\u3000'),newString.strip(u'\u3000'))
 			if newText:
-				queueHandler.queueFunction(queueHandler.eventQueue,speech.speakText,newText,symbolLevel=characterProcessing.SYMLVL_ALL)
+				queueHandler.queueFunction(
+					queueHandler.eventQueue,
+					speech.speakText,
+					newText,
+					symbolLevel=characterProcessing.SymbolLevel.ALL
+				)
 
 	def compositionUpdate(self,compositionString,selectionStart,selectionEnd,isReading,announce=True):
 		if isReading and not config.conf["inputComposition"]["reportReadingStringChanges"]: return
@@ -101,7 +107,7 @@ class CandidateList(Window):
 
 	# Translators: The label for a 'candidate' list that shows a choice of symbols a user can choose from when typing east-Asian characters into a document.
 	name=_("Candidate")
-	role=controlTypes.ROLE_LIST
+	role=controlTypes.Role.LIST
 	next=None
 	previous=None
 	firstChild=None
@@ -118,7 +124,7 @@ class CandidateList(Window):
 
 class CandidateItem(CandidateItemBehavior,Window):
 
-	role=controlTypes.ROLE_LISTITEM
+	role=controlTypes.Role.LISTITEM
 	firstChild=None
 	lastChild=None
 	states=set()

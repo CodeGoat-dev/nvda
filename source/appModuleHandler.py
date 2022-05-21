@@ -1,45 +1,69 @@
 # -*- coding: UTF-8 -*-
-#appModuleHandler.py
-#A part of NonVisual Desktop Access (NVDA)
-#Copyright (C) 2006-2014 NV Access Limited, Peter Vágner, Aleksey Sadovoy, Patrick Zajda
-#This file is covered by the GNU General Public License.
-#See the file COPYING for more details.
+# A part of NonVisual Desktop Access (NVDA)
+# Copyright (C) 2006-2022 NV Access Limited, Peter Vágner, Aleksey Sadovoy, Patrick Zajda, Joseph Lee,
+# Babbage B.V., Mozilla Corporation, Julien Cochuyt
+# This file is covered by the GNU General Public License.
+# See the file COPYING for more details.
 
 """Manages appModules.
 @var runningTable: a dictionary of the currently running appModules, using their application's main window handle as a key.
-@type runningTable: dict
 """
 
+from __future__ import annotations
 import itertools
-import array
 import ctypes
 import ctypes.wintypes
 import os
 import sys
+from types import ModuleType
+from typing import (
+	Dict,
+	List,
+	Optional,
+	Tuple,
+	Union,
+)
+import zipimport
+
 import winVersion
 import pkgutil
+import importlib
 import threading
 import tempfile
 import comtypes.client
 import baseObject
-import globalVars
 from logHandler import log
 import NVDAHelper
-import ui
-import winUser
 import winKernel
 import config
 import NVDAObjects #Catches errors before loading default appModule
 import api
 import appModules
-import watchdog
+import exceptions
+import extensionPoints
+from fileUtils import getFileVersionInfo
 
-#Dictionary of processID:appModule paires used to hold the currently running modules
-runningTable={}
+_KNOWN_IMPORTERS_T = Union[importlib.machinery.FileFinder, zipimport.zipimporter]
+# Dictionary of processID:appModule pairs used to hold the currently running modules
+runningTable: Dict[int, AppModule] = {}
 #: The process ID of NVDA itself.
 NVDAProcessID=None
-_importers=None
+_CORE_APP_MODULES_PATH: os.PathLike = appModules.__path__[0]
+_importers: Optional[List[_KNOWN_IMPORTERS_T]] = None
 _getAppModuleLock=threading.RLock()
+#: Notifies when another application is taking foreground.
+#: This allows components to react upon application switches.
+#: For example, braille triggers bluetooth polling for braille displaysf necessary.
+#: Handlers are called with no arguments.
+post_appSwitch = extensionPoints.Action()
+
+
+_executableNamesToAppModsAddons: Dict[str, str] = dict()
+"""AppModules registered with a given binary by add-ons are placed here.
+We cannot use l{appModules.EXECUTABLE_NAMES_TO_APP_MODS} for modules included in add-ons,
+since appModules in add-ons should take precedence over the one bundled in NVDA.
+"""
+
 
 class processEntry32W(ctypes.Structure):
 	_fields_ = [
@@ -55,14 +79,121 @@ class processEntry32W(ctypes.Structure):
 		("szExeFile", ctypes.c_wchar * 260)
 	]
 
-def getAppNameFromProcessID(processID,includeExt=False):
+
+def _warnDeprecatedAliasAppModule() -> None:
+	"""This function should be executed at the top level of an alias App Module,
+	to log a deprecation warning when the module is imported.
+	"""
+	import inspect
+	# Determine the name of the module inside which this function is executed by using introspection.
+	# Since the current frame belongs to the calling function inside `appModuleHandler`
+	# we need to retrieve the file name from the preceding frame which belongs to the module in which this
+	# function is executed.
+	currModName = os.path.splitext(os.path.basename(inspect.stack()[1].filename))[0]
+	try:
+		replacementModName = appModules.EXECUTABLE_NAMES_TO_APP_MODS[currModName]
+	except KeyError:
+		raise RuntimeError("This function can be executed only inside an alias App Module.") from None
+	else:
+		log.warning(
+			(
+				f"Importing from appModules.{currModName} is deprecated,"
+				f" you should import from appModules.{replacementModName}."
+			)
+		)
+
+
+def registerExecutableWithAppModule(executableName: str, appModName: str) -> None:
+	"""Registers appModule to be used for a given executable.
+	"""
+	_executableNamesToAppModsAddons[executableName] = appModName
+
+
+def unregisterExecutable(executableName: str) -> None:
+	"""Removes the executable of a given name from the mapping of applications to appModules.
+	"""
+	try:
+		del _executableNamesToAppModsAddons[executableName]
+	except KeyError:
+		log.error(f"Executable {executableName} was not previously registered.")
+
+
+def _getPathFromImporter(importer: _KNOWN_IMPORTERS_T) -> os.PathLike:
+	try:  # Standard `FileFinder` instance
+		return importer.path
+	except AttributeError:
+		try:  # Special case for `zipimporter`
+			return os.path.normpath(os.path.join(importer.archive, importer.prefix))
+		except AttributeError:
+			raise TypeError(f"Cannot retrieve path from {repr(importer)}") from None
+
+
+def _getPossibleAppModuleNamesForExecutable(executableName: str) -> Tuple[str, ...]:
+	"""Returns list of the appModule names for a given executable.
+	The names in the tuple are placed in order in which import of these aliases should be attempted that is:
+	- The alias registered by add-ons if any add-on registered an appModule for the executable
+	- Just the name of the executable to cover a standard appModule named the same as the executable
+	- The alias from `appModules.EXECUTABLE_NAMES_TO_APP_MODS` if it exists.
+	"""
+	return tuple(
+		aliasName for aliasName in (
+			_executableNamesToAppModsAddons.get(executableName),
+			executableName,
+			appModules.EXECUTABLE_NAMES_TO_APP_MODS.get(executableName)
+		) if aliasName is not None
+	)
+
+
+def doesAppModuleExist(name: str, ignoreDeprecatedAliases: bool = False) -> bool:
+	"""Returns c{True} if App Module with a given name exists, c{False} otherwise.
+	:param ignoreDeprecatedAliases: used for backward compatibility, so that by default alias modules
+	are not excluded.
+	"""
+	for importer in _importers:
+		modExists = importer.find_module(f"appModules.{name}")
+		if modExists:
+			# While the module has been found it is possible tis is just a deprecated alias.
+			# Before PR #13366 the only possibility to map a single app module to multiple executables
+			# was to create a alias app module and import everything from the main module into it.
+			# Now the preferred solution is to add an entry into `appModules.EXECUTABLE_NAMES_TO_APP_MODS`,
+			# but old alias modules have to stay to preserve backwards compatibility.
+			# We cannot import the alias module since they show a deprecation warning on import.
+			# To determine if the module should be imported or not we check if:
+			# - it is placed in the core appModules package, and
+			# - it has an alias defined in `appModules.EXECUTABLE_NAMES_TO_APP_MODS`.
+			# If both of these are true the module should not be imported in core.
+			if (
+				ignoreDeprecatedAliases
+				and name in appModules.EXECUTABLE_NAMES_TO_APP_MODS
+				and _getPathFromImporter(importer) == _CORE_APP_MODULES_PATH
+			):
+				continue
+			return True
+	return False  # None of the aliases exists
+
+
+def _importAppModuleForExecutable(executableName: str) -> Optional[ModuleType]:
+	"""Import and return appModule for a given executable or `None` if there is no module.
+	"""
+	for possibleModName in _getPossibleAppModuleNamesForExecutable(executableName):
+		# First, check whether the module exists.
+		# We need to do this separately to exclude alias modules,
+		# and because even though an ImportError is raised when a module can't be found,
+		# it might also be raised for other reasons.
+		if doesAppModuleExist(possibleModName, ignoreDeprecatedAliases=True):
+			return importlib.import_module(
+				f"appModules.{possibleModName}",
+				package="appModules"
+			)
+	return None  # Module not found
+
+
+def getAppNameFromProcessID(processID: int, includeExt: bool = False) -> str:
 	"""Finds out the application name of the given process.
 	@param processID: the ID of the process handle of the application you wish to get the name of.
-	@type processID: int
-	@param includeExt: C{True} to include the extension of the application's executable filename, C{False} to exclude it.
-	@type window: bool
+	@param includeExt: C{True} to include the extension of the application's executable filename,
+	C{False} to exclude it.
 	@returns: application name
-	@rtype: unicode or str
 	"""
 	if processID==NVDAProcessID:
 		return "nvda.exe" if includeExt else "nvda"
@@ -70,7 +201,7 @@ def getAppNameFromProcessID(processID,includeExt=False):
 	FProcessEntry32 = processEntry32W()
 	FProcessEntry32.dwSize = ctypes.sizeof(processEntry32W)
 	ContinueLoop = winKernel.kernel32.Process32FirstW(FSnapshotHandle, ctypes.byref(FProcessEntry32))
-	appName = unicode()
+	appName = str()
 	while ContinueLoop:
 		if FProcessEntry32.th32ProcessID == processID:
 			appName = FProcessEntry32.szExeFile
@@ -85,30 +216,28 @@ def getAppNameFromProcessID(processID,includeExt=False):
 	# This might be an executable which hosts multiple apps.
 	# Try querying the app module for the name of the app being hosted.
 	try:
-		# Python 2.x can't properly handle unicode module names, so convert them.
-		mod = __import__("appModules.%s" % appName.encode("mbcs"),
-			globals(), locals(), ("appModules",))
-		return mod.getAppNameFromHost(processID)
-	except (ImportError, AttributeError, LookupError):
+		return _importAppModuleForExecutable(appName).getAppNameFromHost(processID)
+	except (AttributeError, LookupError):
 		pass
 	return appName
+
 
 def getAppModuleForNVDAObject(obj):
 	if not isinstance(obj,NVDAObjects.NVDAObject):
 		return
 	return getAppModuleFromProcessID(obj.processID)
 
-def getAppModuleFromProcessID(processID):
-	"""Finds the appModule that is for the given process ID. The module is also cached for later retreavals.
+
+def getAppModuleFromProcessID(processID: int) -> AppModule:
+	"""Finds the appModule that is for the given process ID. The module is also cached for later retrievals.
 	@param processID: The ID of the process for which you wish to find the appModule.
-	@type processID: int
-	@returns: the appModule, or None if there isn't one
-	@rtype: appModule 
+	@returns: the appModule
 	"""
 	with _getAppModuleLock:
 		mod=runningTable.get(processID)
 		if not mod:
-			appName=getAppNameFromProcessID(processID)
+			# #5323: Certain executables contain dots as part of their file names.
+			appName=getAppNameFromProcessID(processID).replace(".","_")
 			mod=fetchAppModule(processID,appName)
 			if not mod:
 				raise RuntimeError("error fetching default appModule")
@@ -132,7 +261,7 @@ def update(processID,helperLocalBindingHandle=None,inprocRegistrationHandle=None
 def cleanup():
 	"""Removes any appModules from the cache whose process has died.
 	"""
-	for deadMod in [mod for mod in runningTable.itervalues() if not mod.isAlive]:
+	for deadMod in [mod for mod in runningTable.values() if not mod.isAlive]:
 		log.debug("application %s closed"%deadMod.appName)
 		del runningTable[deadMod.processID]
 		if deadMod in set(o.appModule for o in api.getFocusAncestors()+[api.getFocusObject()] if o and o.appModule):
@@ -145,48 +274,76 @@ def cleanup():
 		except:
 			log.exception("Error terminating app module %r" % deadMod)
 
-def doesAppModuleExist(name):
-	return any(importer.find_module("appModules.%s" % name) for importer in _importers)
 
-def fetchAppModule(processID,appName):
+def fetchAppModule(processID: int, appName: str) -> AppModule:
 	"""Returns an appModule found in the appModules directory, for the given application name.
 	@param processID: process ID for it to be associated with
-	@type processID: integer
 	@param appName: the application name for which an appModule should be found.
-	@type appName: unicode or str
-	@returns: the appModule, or None if not found
-	@rtype: AppModule
-	"""  
-	# First, check whether the module exists.
-	# We need to do this separately because even though an ImportError is raised when a module can't be found, it might also be raised for other reasons.
-	# Python 2.x can't properly handle unicode module names, so convert them.
-	modName = appName.encode("mbcs")
+	@returns: the appModule.
+	"""
+	modName = appName
 
-	if doesAppModuleExist(modName):
-		try:
-			return __import__("appModules.%s" % modName, globals(), locals(), ("appModules",)).AppModule(processID, appName)
-		except:
-			log.error("error in appModule %r"%modName, exc_info=True)
-			# We can't present a message which isn't unicode, so use appName, not modName.
-			# Translators: This is presented when errors are found in an appModule (example output: error in appModule explorer).
-			ui.message(_("Error in appModule %s")%appName)
+	try:
+		importedMod = _importAppModuleForExecutable(modName)
+		if importedMod is not None:
+			return importedMod.AppModule(processID, appName)
+		# Broad except since we do not know
+		# what exceptions may be thrown during import / construction of the App Module.
+	except Exception:
+		log.exception(f"error in appModule {modName!r}")
+		import ui
+		import speech.priorities
+		ui.message(
+			# Translators: This is presented when errors are found in an appModule
+			# (example output: error in appModule explorer).
+			_("Error in appModule %s") % modName,
+			speechPriority=speech.priorities.Spri.NOW
+		)
 
 	# Use the base AppModule.
 	return AppModule(processID, appName)
 
+
 def reloadAppModules():
 	"""Reloads running appModules.
 	especially, it clears the cache of running appModules and deletes them from sys.modules.
-	Each appModule will be reloaded immediately as a reaction on a first event coming from the process.
+	Each appModule will then be reloaded immediately.
 	"""
 	global appModules
+	state = []
+	for mod in runningTable.values():
+		state.append({key: getattr(mod, key) for key in ("processID",
+			# #2892: We must save nvdaHelperRemote handles, as we can't reinitialize without a foreground/focus event.
+			# Also, if there is an active context handle such as a loaded buffer,
+			# nvdaHelperRemote can't reinit until that handle dies.
+			"helperLocalBindingHandle", "_inprocRegistrationHandle",
+			# #5380: We must save config profile triggers so they can be cleaned up correctly.
+			# Otherwise, they'll remain active forever.
+			"_configProfileTrigger",
+		) if hasattr(mod, key)})
+		# #2892: Don't disconnect from nvdaHelperRemote during termination.
+		mod._helperPreventDisconnect = True
 	terminate()
 	del appModules
-	mods=[k for k,v in sys.modules.iteritems() if k.startswith("appModules") and v is not None]
+	mods=[k for k,v in sys.modules.items() if k.startswith("appModules") and v is not None]
 	for mod in mods:
 		del sys.modules[mod]
 	import appModules
 	initialize()
+	for entry in state:
+		pid = entry.pop("processID")
+		mod = getAppModuleFromProcessID(pid)
+		mod.__dict__.update(entry)
+	# The appModule property for existing NVDAObjects will now be None, since their AppModule died.
+	# Force focus, navigator, etc. objects to re-fetch,
+	# since NVDA depends on the appModule property for these.
+	for obj in itertools.chain((api.getFocusObject(), api.getNavigatorObject()), api.getFocusAncestors()):
+		try:
+			del obj._appModuleRef
+		except AttributeError:
+			continue
+		# Fetch and cache right away; the process could die any time.
+		obj.appModule
 
 def initialize():
 	"""Initializes the appModule subsystem. 
@@ -197,7 +354,7 @@ def initialize():
 	_importers=list(pkgutil.iter_importers("appModules.__init__"))
 
 def terminate():
-	for processID, app in runningTable.iteritems():
+	for processID, app in runningTable.items():
 		try:
 			app.terminate()
 		except:
@@ -208,6 +365,9 @@ def handleAppSwitch(oldMods, newMods):
 	newModsSet = set(newMods)
 	processed = set()
 	nextStage = []
+
+	if not oldMods or oldMods[-1].appName != newMods[-1].appName:
+		post_appSwitch.notify()
 
 	# Determine all apps that are losing focus and fire appropriate events.
 	for mod in reversed(oldMods):
@@ -224,7 +384,7 @@ def handleAppSwitch(oldMods, newMods):
 		if not mod.sleepMode and hasattr(mod,'event_appModule_loseFocus'):
 			try:
 				mod.event_appModule_loseFocus()
-			except watchdog.CallCancelled:
+			except exceptions.CallCancelled:
 				pass
 
 	nvdaGuiLostFocus = nextStage and nextStage[-1].appName == "nvda"
@@ -266,9 +426,14 @@ def handleAppSwitch(oldMods, newMods):
 class AppModule(baseObject.ScriptableObject):
 	"""Base app module.
 	App modules provide specific support for a single application.
-	Each app module should be a Python module in the appModules package named according to the executable it supports;
-	e.g. explorer.py for the explorer.exe application.
-	It should containa  C{AppModule} class which inherits from this base class.
+	Each app module should be a Python module or a package in the appModules package
+	named according to the executable it supports;
+	e.g. explorer.py for the explorer.exe application or firefox/__init__.py for firefox.exe.
+	If the name of the executable is not compatible with the Python's import system
+	i.e. contains some special characters such as "." or "+" you can name the module however you like
+	and then map the executable name to the module name
+	by adding an entry to `appModules.EXECUTABLE_NAMES_TO_APP_MODS` dictionary.
+	It should contain a C{AppModule} class which inherits from this base class.
 	App modules can implement and bind gestures to scripts.
 	These bindings will only take effect while an object in the associated application has focus.
 	See L{ScriptableObject} for details.
@@ -293,69 +458,84 @@ class AppModule(baseObject.ScriptableObject):
 	#: @type: bool
 	sleepMode=False
 
+	processID: int
+	"""The ID of the process this appModule is for"""
+
+	appName: str
+	"""The application name"""
+
 	def __init__(self,processID,appName=None):
 		super(AppModule,self).__init__()
-		#: The ID of the process this appModule is for.
-		#: @type: int
 		self.processID=processID
 		if appName is None:
 			appName=getAppNameFromProcessID(processID)
-		#: The application name.
-		#: @type: str
 		self.appName=appName
-		if winVersion.winVersion.major > 5:
-			self.processHandle=winKernel.openProcess(winKernel.SYNCHRONIZE|winKernel.PROCESS_QUERY_INFORMATION,False,processID)
-		else:
-			self.processHandle=winKernel.openProcess(winKernel.SYNCHRONIZE|winKernel.PROCESS_QUERY_INFORMATION|winKernel.PROCESS_VM_READ,False,processID)
-		self.helperLocalBindingHandle=None
+		self.processHandle=winKernel.openProcess(winKernel.SYNCHRONIZE|winKernel.PROCESS_QUERY_INFORMATION,False,processID)
+		self.helperLocalBindingHandle: Optional[ctypes.c_long] = None
+		"""RPC binding handle pointing to the RPC server for this process"""
+
 		self._inprocRegistrationHandle=None
+
+	def _getExecutableFileInfo(self):
+		# Used for obtaining file name and version for the executable.
+		# This is needed in case immersive app package returns an error,
+		# dealing with a native app, or a converted desktop app.
+		# Create the buffer to get the executable name
+		exeFileName = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+		length = ctypes.wintypes.DWORD(ctypes.wintypes.MAX_PATH)
+		if not ctypes.windll.Kernel32.QueryFullProcessImageNameW(
+			self.processHandle, 0, exeFileName, ctypes.byref(length)
+		):
+			raise ctypes.WinError()
+		fileName = exeFileName.value
+		fileinfo = getFileVersionInfo(fileName, "ProductName", "ProductVersion")
+		return (fileinfo["ProductName"], fileinfo["ProductVersion"])
+
+	def _getImmersivePackageInfo(self):
+		# Used to obtain full package structure for a hosted app.
+		# The package structure consists of product name, version, architecture, language, and app ID.
+		# This is useful for confirming whether an app is hosted or not despite an app reporting otherwise.
+		# Some apps such as File Explorer says it is an immersive process but error 15700 is shown.
+		# Others such as Store version of Office are not truly hosted apps but are distributed via Store.
+		length = ctypes.c_uint()
+		ctypes.windll.kernel32.GetPackageFullName(self.processHandle, ctypes.byref(length), None)
+		packageFullName = ctypes.create_unicode_buffer(length.value)
+		if ctypes.windll.kernel32.GetPackageFullName(
+			self.processHandle, ctypes.byref(length), packageFullName
+		) == 0:
+			return packageFullName.value
+		else:
+			return None
 
 	def _setProductInfo(self):
 		"""Set productName and productVersion attributes.
+		There are at least two ways of obtaining product info for an app:
+		* Package info for hosted apps
+		* File version info for other apps and for some hosted apps
 		"""
 		# Sometimes (I.E. when NVDA starts) handle is 0, so stop if it is the case
 		if not self.processHandle:
 			raise RuntimeError("processHandle is 0")
-		# Choose the right function to use to get the executable file name
-		if winVersion.winVersion.major > 5:
-			# For Windows Vista and higher, use QueryFullProcessImageName function
-			GetModuleFileName = ctypes.windll.Kernel32.QueryFullProcessImageNameW
+		# No need to worry about immersive (hosted) apps and friends until Windows 8.
+		if winVersion.getWinVer() >= winVersion.WIN8:
+			# Some apps such as File Explorer says it is an immersive process but error 15700 is shown.
+			# Therefore resort to file version info behavior because it is not a hosted app.
+			# Others such as Store version of Office are not truly hosted apps,
+			# yet returns an internal version anyway because they are converted desktop apps.
+			# For immersive apps, default implementation is generic - returns Windows version information.
+			# Thus probe package full name and parse the serialized representation of package info structure.
+			packageInfo = self._getImmersivePackageInfo()
+			if packageInfo is not None:
+				# Product name is of the form publisher.name for a hosted app.
+				productInfo = packageInfo.split("_")
+			else:
+				# File Explorer and friends which are really native aps.
+				productInfo = self._getExecutableFileInfo()
 		else:
-			GetModuleFileName = ctypes.windll.psapi.GetModuleFileNameExW
-		# Create the buffer to get the executable name
-		exeFileName = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
-		length = ctypes.wintypes.DWORD(ctypes.wintypes.MAX_PATH)
-		if not GetModuleFileName(self.processHandle, 0, exeFileName, ctypes.byref(length)):
-			raise ctypes.WinError()
-		fileName = exeFileName.value
-		# Get size needed for buffer (0 if no info)
-		size = ctypes.windll.version.GetFileVersionInfoSizeW(fileName, None)
-		if not size:
-			raise RuntimeError("No version information")
-		# Create buffer
-		res = ctypes.create_string_buffer(size)
-		# Load file informations into buffer res
-		ctypes.windll.version.GetFileVersionInfoW(fileName, None, size, res)
-		r = ctypes.c_uint()
-		l = ctypes.c_uint()
-		# Look for codepages
-		ctypes.windll.version.VerQueryValueW(res, u'\\VarFileInfo\\Translation',
-		ctypes.byref(r), ctypes.byref(l))
-		if not l.value:
-			raise RuntimeError("No codepage")
-		# Take the first codepage (what else ?)
-		codepage = array.array('H', ctypes.string_at(r.value, 4))
-		codepage = "%04x%04x" % tuple(codepage)
-		# Extract product name and put it to self.productName
-		ctypes.windll.version.VerQueryValueW(res,
-			u'\\StringFileInfo\\%s\\ProductName' % codepage,
-			ctypes.byref(r), ctypes.byref(l))
-		self.productName = ctypes.wstring_at(r.value, l.value-1)
-		# Extract product version and put it to self.productVersion
-		ctypes.windll.version.VerQueryValueW(res,
-			u'\\StringFileInfo\\%s\\ProductVersion' % codepage,
-			ctypes.byref(r), ctypes.byref(l))
-		self.productVersion = ctypes.wstring_at(r.value, l.value-1)
+			# Not only native apps, but also some converted desktop aps such as Office.
+			productInfo = self._getExecutableFileInfo()
+		self.productName = productInfo[0]
+		self.productVersion = productInfo[1]
 
 	def _get_productName(self):
 		self._setProductInfo()
@@ -371,6 +551,8 @@ class AppModule(baseObject.ScriptableObject):
 	def _get_appModuleName(self):
 		return self.__class__.__module__.split('.')[-1]
 
+	isAlive: bool
+
 	def _get_isAlive(self):
 		return bool(winKernel.waitForSingleObject(self.processHandle,0))
 
@@ -380,6 +562,8 @@ class AppModule(baseObject.ScriptableObject):
 		Subclasses should call the superclass method first.
 		"""
 		winKernel.closeHandle(self.processHandle)
+		if getattr(self, "_helperPreventDisconnect", False):
+			return
 		if self._inprocRegistrationHandle:
 			ctypes.windll.rpcrt4.RpcSsDestroyClientContext(ctypes.byref(self._inprocRegistrationHandle))
 		if self.helperLocalBindingHandle:
@@ -398,37 +582,201 @@ class AppModule(baseObject.ScriptableObject):
 	# optimisation: Make it easy to detect that this hasn't been overridden.
 	chooseNVDAObjectOverlayClasses._isBase = True
 
+	def _get_appPath(self):
+		"""Returns the full path for the executable e.g. 'C:\\Windows\\explorer.exe' for Explorer.
+		@rtype: str
+		"""
+		size = ctypes.wintypes.DWORD(ctypes.wintypes.MAX_PATH)
+		path = ctypes.create_unicode_buffer(size.value)
+		winKernel.kernel32.QueryFullProcessImageNameW(self.processHandle, 0, path, ctypes.byref(size))
+		self.appPath = path.value if path else None
+		return self.appPath
+
 	def _get_is64BitProcess(self):
 		"""Whether the underlying process is a 64 bit process.
 		@rtype: bool
 		"""
-		if os.environ.get("PROCESSOR_ARCHITEW6432") != "AMD64":
+		if os.environ.get("PROCESSOR_ARCHITEW6432") not in ("AMD64","ARM64"):
 			# This is 32 bit Windows.
 			self.is64BitProcess = False
 			return False
-		res = ctypes.wintypes.BOOL()
-		if ctypes.windll.kernel32.IsWow64Process(self.processHandle, ctypes.byref(res)) == 0:
-			self.is64BitProcess = False
-			return False
-		self.is64BitProcess = not res
+		try:
+			# We need IsWow64Process2 to detect WOW64 on ARM64.
+			processMachine = ctypes.wintypes.USHORT()
+			if ctypes.windll.kernel32.IsWow64Process2(self.processHandle,
+					ctypes.byref(processMachine), None) == 0:
+				self.is64BitProcess = False
+				return False
+			# IMAGE_FILE_MACHINE_UNKNOWN if not a WOW64 process.
+			self.is64BitProcess = processMachine.value == winKernel.IMAGE_FILE_MACHINE_UNKNOWN
+		except AttributeError:
+			# IsWow64Process2 is only supported on Windows 10 version 1511 and later.
+			# Fall back to IsWow64Process.
+			res = ctypes.wintypes.BOOL()
+			if ctypes.windll.kernel32.IsWow64Process(self.processHandle, ctypes.byref(res)) == 0:
+				self.is64BitProcess = False
+				return False
+			self.is64BitProcess = not res
 		return self.is64BitProcess
 
-	def isBadUIAWindow(self,hwnd):
+	def _get_isWindowsStoreApp(self):
+		"""Whether this process is a Windows Store (immersive) process.
+		An immersive process is a Windows app that runs inside a Windows Runtime (WinRT) container.
+		These include Windows store apps on Windows 8 and 8.1,
+		and Universal Windows Platform (UWP) apps on Windows 10.
+		A special case is a converted desktop app distributed on Microsoft Store.
+		Not all immersive apps are packaged as a true Store app with a package info
+		e.g. File Explorer reports itself as immersive when it is not.
+		@rtype: bool
 		"""
-		returns true if the UIA implementation of the given window must be ignored due to it being broken in some way.
+		if winVersion.getWinVer() < winVersion.WIN8:
+			# Windows Store/UWP apps were introduced in Windows 8.
+			self.isWindowsStoreApp = False
+			return False
+		# Package info is much more accurate than IsImmersiveProcess
+		# because IsImmersive Process returns nonzero for File Explorer
+		# and zero for Store version of Office.
+		if self._getImmersivePackageInfo() is not None:
+			self.isWindowsStoreApp = True
+			return True
+		self.isWindowsStoreApp = False
+		return self.isWindowsStoreApp
+
+	def _get_appArchitecture(self):
+		"""Returns the target architecture for the specified app.
+		This is useful for detecting X86/X64 apps running on ARM64 releases of Windows 10.
+		The following strings are returned:
+		* x86: 32-bit x86 app on 32-bit or 64-bit Windows.
+		* AMD64: x64 app on x64 or ARM64 Windows.
+		* ARM: 32-bit ARM app on ARM64 Windows.
+		* ARM64: 64-bit ARM app on ARM64 Windows.
+		@rtype: str
+		"""
+		# Details: https://docs.microsoft.com/en-us/windows/desktop/SysInfo/image-file-machine-constants
+		# The only value missing is ARM64 (AA64)
+		# because it is only applicable if ARM64 app is running on ARM64 machines.
+		archValues2ArchNames = {
+			0x014c: "x86",  # I386-32
+			0x8664: "AMD64",  # X86-64
+			0x01c0: "ARM"  # 32-bit ARM
+		}
+		# IsWow64Process2 can be used on Windows 10 Version 1511 (build 10586) and later.
+		# Just assume this is an x64 (AMD64) app.
+		# if this is a64-bit app running on 7 through 10 Version 1507 (build 10240).
+		try:
+			# If a native app is running (such as x64 app on x64 machines), app architecture value is not set.
+			processMachine = ctypes.wintypes.USHORT()
+			ctypes.windll.kernel32.IsWow64Process2(self.processHandle, ctypes.byref(processMachine), None)
+			if not processMachine.value:
+				self.appArchitecture = os.environ.get("PROCESSOR_ARCHITEW6432")
+			else:
+				# On ARM64, two 32-bit architectures are supported: x86 (via emulation) and ARM (natively).
+				self.appArchitecture = archValues2ArchNames[processMachine.value]
+		except AttributeError:
+			# Windows 10 Version 1507 (build 10240) and earlier.
+			self.appArchitecture = "AMD64" if self.is64BitProcess else "x86"
+		return self.appArchitecture
+
+	def isGoodUIAWindow(self,hwnd):
+		"""
+		returns C{True} if the UIA implementation of the given window must be used, regardless whether native or not.
+		This function is the counterpart of and takes precedence over L{isBadUIAWindow}.
+		If both functions return C{False}, the decision of whether to use UIA for the window is left to core.
 		Warning: this may be called outside of NVDA's main thread, therefore do not try accessing NVDAObjects and such, rather just check window  class names.
 		"""
 		return False
+
+	def isBadUIAWindow(self,hwnd):
+		"""
+		returns C{True} if the UIA implementation of the given window must be ignored due to it being broken in some way.
+		This function is the counterpart of L{isGoodUIAWindow}.
+		When both functions return C{True}, L{isGoodUIAWindow} takes precedence.
+		If both functions return C{False}, the decision of whether to use UIA for the window is left to core.
+		Warning: this may be called outside of NVDA's main thread, therefore do not try accessing NVDAObjects and such, rather just check window  class names.
+		"""
+		return False
+
+	def shouldProcessUIAPropertyChangedEvent(self, sender, propertyId):
+		"""
+		Determines whether NVDA should process a UIA property changed event.
+		Returning False will cause the event to be dropped completely. This can be
+		used to work around UIA implementations which flood events and cause poor
+		performance.
+		Returning True means that the event will be processed, but it might still
+		be rejected later; e.g. because it isn't native UIA, because
+		shouldAcceptEvent returns False, etc.
+		"""
+		return True
 
 	def dumpOnCrash(self):
 		"""Request that this process writes a minidump when it crashes for debugging.
 		This should only be called if instructed by a developer.
 		"""
 		path = os.path.join(tempfile.gettempdir(),
-			"nvda_crash_%s_%d.dmp" % (self.appName, self.processID)).decode("mbcs")
+			"nvda_crash_%s_%d.dmp" % (self.appName, self.processID))
 		NVDAHelper.localLib.nvdaInProcUtils_dumpOnCrash(
 			self.helperLocalBindingHandle, path)
-		print "Dump path: %s" % path
+		print("Dump path: %s" % path)
+
+	def _get_statusBar(self):
+		"""Retrieve the status bar object of the application.
+		If C{NotImplementedError} is raised, L{api.getStatusBar} will resort to
+		perform a lookup by position.
+		If C{None} is returned, L{GlobalCommands.script_reportStatusLine} will
+		in turn resort to reading the bottom line of text written to the
+		display.
+		@rtype: NVDAObject
+		"""
+		raise NotImplementedError()
+
+	def getStatusBarText(self, obj: NVDAObjects.NVDAObject) -> str:
+		"""Get the text from the given status bar.
+		If C{NotImplementedError} is raised, L{api.getStatusBarText} will resort to
+		retrieve the name of the status bar and the names and values of all of its children.
+		"""
+		raise NotImplementedError()
+
+	def _get_statusBarTextInfo(self):
+		"""Retrieve a L{TextInfo} positioned at the status bar of the application.
+		This is used by L{GlobalCommands.script_reportStatusLine} in cases where
+		L{api.getStatusBar} could not locate a proper L{NVDAObject} for the
+		status bar.
+		For this method to get called, L{_get_statusBar} must return C{None}.
+		@rtype: TextInfo
+		"""
+		raise NotImplementedError()
+
+	devInfo: List[str]
+	"""Information about this appModule useful to developers."""
+
+	def _get_devInfo(self) -> List[str]:
+		"""Information about this appModule useful to developers.
+		For an NVDAObject, its appModule devInfo is appended to NVDAObject.devInfo.
+		Subclasses may extend this, calling the superclass property first.
+		@return: A list of text strings providing information about this appModule useful to developers.
+		"""
+		info = []
+		try:
+			ret = repr(self)
+		except Exception as e:
+			ret = f"exception: {e}"
+		info.append(f"appModule: {ret}")
+		try:
+			ret = repr(self.productName)
+		except Exception as e:
+			ret = f"exception: {e}"
+		info.append(f"appModule.productName: {ret}")
+		try:
+			ret = repr(self.productVersion)
+		except Exception as e:
+			ret = f"exception: {e}"
+		info.append(f"appModule.productVersion: {ret}")
+		try:
+			ret = repr(self.helperLocalBindingHandle)
+		except Exception as e:
+			ret = f"exception: {e}"
+		info.append(f"appModule.helperLocalBindingHandle: {ret}")
+		return info
 
 class AppProfileTrigger(config.ProfileTrigger):
 	"""A configuration profile trigger for when a particular application has focus.

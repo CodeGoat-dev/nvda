@@ -1,8 +1,8 @@
-#NVDAObjects/IAccessible/msOffice.py
-#A part of NonVisual Desktop Access (NVDA)
-#This file is covered by the GNU General Public License.
-#See the file COPYING for more details.
-#Copyright (C) 2006-2010 Michael Curran <mick@kulgan.net>, James Teh <jamie@jantrid.net>
+# -*- coding: UTF-8 -*-
+# A part of NonVisual Desktop Access (NVDA)
+# Copyright (C) 2006-2020 NV Access Limited, Manish Agrawal, Łukasz Golonka
+# This file may be used under the terms of the GNU General Public License, version 2 or later.
+# For more details see: https://www.gnu.org/licenses/gpl-2.0.html
 
 import oleacc
 import IAccessibleHandler
@@ -27,37 +27,57 @@ class SDM(IAccessible):
 
 	def _get_name(self):
 		name=super(SDM,self).name
-		if not name and self.role==controlTypes.ROLE_LISTITEM:
+		if not name and self.role==controlTypes.Role.LISTITEM:
 			name=self.displayText
 		return name
 
 	def _get_positionInfo(self):
-		if self.role!=controlTypes.ROLE_LISTITEM:
+		if self.role!=controlTypes.Role.LISTITEM:
 			return {}
 		return super(SDM,self).positionInfo
 
 	def _get_parent(self):
-		if self.IAccessibleChildID == 0 and self.role not in (controlTypes.ROLE_DIALOG, controlTypes.ROLE_PROPERTYPAGE, controlTypes.ROLE_WINDOW):
+		if self.IAccessibleChildID == 0 and self.role not in (controlTypes.Role.DIALOG, controlTypes.Role.PROPERTYPAGE, controlTypes.Role.WINDOW):
 			# SDM child IAccessible objects have a broken accParent.
 			# The parent should be the dialog.
 			return getNVDAObjectFromEvent(self.windowHandle, winUser.OBJID_CLIENT, 0)
 		return super(SDM, self).parent
 
+	def _get_presentationType(self):
+		t=super(SDM,self).presentationType
+		if t==self.presType_content and self.SDMChild:
+			t=self.presType_layout
+		return t
+
+	def _get_firstChild(self):
+		child=super(SDM,self).firstChild
+		if not child:
+			child=self.SDMChild
+		return child
+
+	def _get_lastChild(self):
+		child=super(SDM,self).lastChild
+		if not child:
+			child=self.SDMChild
+		return child
+
 	def _get_SDMChild(self):
-		if controlTypes.STATE_FOCUSED in self.states:
+		if controlTypes.State.FOCUSED in self.states:
 			hwndFocus=winUser.getGUIThreadInfo(0).hwndFocus
 			if hwndFocus and hwndFocus!=self.windowHandle and winUser.isDescendantWindow(self.windowHandle,hwndFocus) and not winUser.getClassName(hwndFocus).startswith('bosa_sdm'):
 				obj=getNVDAObjectFromEvent(hwndFocus,winUser.OBJID_CLIENT,0)
 				if not obj: return None
 				if getattr(obj,'parentSDMCanOverrideName',True):
 					obj.name=self.name
+				obj.keyboardShortcut=self.keyboardShortcut
+				obj.parent=self
 				return obj
 		return None
 
 class MSOUNISTAT(IAccessible):
 
 	def _get_role(self):
-		return controlTypes.ROLE_STATICTEXT
+		return controlTypes.Role.STATICTEXT
 
 class MsoCommandBarToolBar(IAccessible):
 
@@ -144,7 +164,7 @@ class SDMSymbols(SDM):
 		# static text labels for these lists seem to have a keyboardShortcut, therefore we can skip over those.
 		next=self.next
 		while next:
-			if not next.keyboardShortcut and next.role==controlTypes.ROLE_STATICTEXT:
+			if not next.keyboardShortcut and next.role==controlTypes.Role.STATICTEXT:
 				return next.name
 			next=next.next
 
@@ -160,3 +180,36 @@ class SDMSymbols(SDM):
 		"kb:leftArrow": "selectGraphic",
 		"kb:rightArrow": "selectGraphic",
 	}
+
+
+class StatusBar (IAccessible):
+
+	def _get_role(self):
+		""" #4257: Status bar in Office applications does not  expose proper role via IAccessible.
+We cannot acces it via UIA because it does not fire focus events when focused for the first time.
+Fortunately accValue contains "status bar" and is not localized.
+"""
+		accValue = self.IAccessibleObject.accValue(self.IAccessibleChildID)
+		if accValue == 'Ribbon Tab':
+			return controlTypes.Role.TAB
+		if accValue == 'Status Bar':
+			return controlTypes.Role.STATUSBAR
+		return super()._get_role()
+
+	def _get_description(self):
+		return ""
+
+	def _get_isPresentableFocusAncestor(self):
+		accValue = self.IAccessibleObject.accValue(self.IAccessibleChildID)
+		if accValue == "Ribbon":
+			return False
+		return super().isPresentableFocusAncestor
+
+
+class RibbonSection (IAccessible):
+
+	def _get_role(self):
+		accValue = self.IAccessibleObject.accValue(self.IAccessibleChildID)
+		if accValue == "Group":
+			return controlTypes.Role.GROUPING
+		return super()._get_role()

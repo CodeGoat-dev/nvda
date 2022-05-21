@@ -1,11 +1,1880 @@
-﻿Novidades do NVDA
-
+Novidades do  NVDA
+Traduzido pela Equipa portuguesa do NVDA
 
 %!includeconf: ../changes.t2tconf
 
-Tradução de Rui Fontes, a partir da versão 2015.1, adaptação por Rui Batista e Rui Fontes da tradução brasileira nas versões anteriores.
+= 2022.1 =
+Esta versão inclui:
+- Grandes melhorias do suporte à UIA no MS Office;
+ Para o Microsoft Office, versão 16.0.15000 ou superior, no Windows 11, o NVDA irá utilizar a UI Automation para aceder aos documentos do Microsoft Word, por padrão;
+ Isto proporciona uma melhoria significativa do desempenho em relação ao antigo acesso  pelo modelo de objectos.
+- Melhorias nos drivers de dispositivos Braille, incluindo blocos de notas Seika, linhas Braille Papenmeier e no driver HID Braille;
+- Vvárias correcções de bugs do Windows 11, para aplicações como Calculadora, Consola, Terminal, Correio e Painel de Emoji.
+- O eSpeak-NG e o LibLouis foram actualizados, incluindo novas tabelas japonesas, alemãs e catalãs.
+-
+
+Nota importante:
+Esta versão quebra a compatibilidade com os add-ons existentes.
+
+
+== Novas funcionalidades ==
+- Suporte para notas de relatório em MS Excel, com a UI Automation activada no Windows 11. (#12861)
+- Em compilações recentes do Microsoft Word, através da UI Automation, no Windows 11 a existência de marcadores de página, comentários de rascunho e comentários resolvidos são agora anunciados tanto em voz como em Braille. (#12861)
+- O novo parâmetro de linha de comando "--lang" permite anular o idioma configurado no NVDA. (#10044)
+- O NVDA agora avisa sobre parâmetros de linha de comando que são desconhecidos e não são utilizados por quaisquer extras. (#12795)
+- No Microsoft Word acedido através da UI Automation, o NVDA irá agora fazer uso do MathPlayer para ler e navegar nas equações matemáticas do Office. (#12946)
+  - Para que isto funcione, deve usar o Microsoft Word 365
+  -
+- O anúncio de "tem detalhes" e o comando associado para resumir a relação de detalhes foram actualizados para trabalhar em modo de foco. (#13106)
+- Os Blocos de notas Seika passam a ser automaticamente detectados quando ligados via USB ou Bluetooth. (#13191, #13142)
+ - Isto afecta os seguintes dispositivos: MiniSeika (16 e 24 células), V6, e V6Pro (40 células);
+ - A selecção manual da porta COM bluetooth também é agora suportada.
+ -
+- Foi adicionado um comando para alternar o visualizador braille; não há nenhum gesto predefinido. (#13258)
+- Adicionados comandos para alternar várias teclas modificadoras simultaneamente com um dispositivo Braille (#13152)
+- Os diálogos dos dicionários passam a ter um botão "Remover tudo" para facilitar a eliminação total de um dicionário. (#11802)
+- Adicionado suporte para a Calculadora do Windows 11. (#13212)
+- No Microsoft Word com a UI Automation activada no Windows 11, os números de linha e de secção podem agora ser reportados. (#13283, #13515)
+- Para Microsoft Office 16.0.15000 ou superior no Windows 11, o NVDA utilizará a UI Automation para aceder a documentos do Microsoft Word, por padrão, proporcionando uma melhoria significativa do desempenho em relação ao antigo acesso por modelo de  objectos. (#13437)
+ - Isto inclui documentos do Microsoft Word, e também o leitor e compositor de mensagens no Microsoft Outlook. 
+ -
+-
+
+
+== Alterações ==
+- O Espeak-ng foi actualizado para 1.51-dev commit ``7e5457f91e10```. (#12950)
+- O conversor liblouis braille actualizado para [3.21.0 https://github.com/liblouis/liblouis/releases/tag/v3.21.0]. (#13141, #13438)
+ - Adicionada nova tabela Braille: Braille literário japonês (Kantenji).
+ - Adicionada nova tabela Braille de computador alemão de 6 pontos.
+ - Adicionada tabela Braille catalã de grau 1. (#13408)
+ - 
+- O NVDA passa a anunciar a selecção e união de células em LibreOffice Calc 7.3 e superiores. (#9310, #6897)
+- Actualização do Unicode Common Locale Data Repository (CLDR) para 40.0. (#12999)
+- "NVDA+Delete do teclado numérico" anuncia a posição do caractere ou objecto focado por padrão. (#13060)
+- "NVDA+Shift+Delete do teclado numérico" anuncia a localização do cursor de revisão. (#13060)
+- Adicionados comandos padrão para alternância de teclas modificadoras às linhas Braille da Freedom Scientific (#13152)
+- A "linha base" já não é anunciada através do comando de anúncio de formatação de texto (`NVDA+f). (#11815)
+- Activar a descrição longa já não tem um comando padrão atribuído. (#13380)
+- O resumo dos detalhes do relatório tem agora um comando por defeito (``NVDA+d```). (#13380)
+- O NVDA precisa de ser reiniciado após a instalação do MathPlayer. (#13486)
+-
+
+
+== Correcções ==
+- O painel de gestão da da Área de transferência já não deve roubar incorrectamente o foco ao abrir alguns programas do Office. (#12736)
+- Num sistema em que o utilizador optou por trocar o botão primário do rato da esquerda para a direita, o NVDA deixará de abrir acidentalmente um menu de contexto em vez de activar um item, em aplicações tais como navegadores web. (#12642)
+- Ao mover o cursor de revisão para além do fim dos controlos de texto, tal como no Microsoft Word com UI Automation, "fundo" é correctamente anunciado em mais situações. (#12808)
+- O  NVDA pode anunciar o nome da aplicação e a versão para os binários colocados no sistema32 ao correr sob a versão de 64 bits do Windows. (#12943)
+- Maior consistência da leitura das informações de resposta dos programas em modo terminal. (#12974)
+  - Note-se que em algumas situações, ao inserir ou apagar caracteres no meio de uma linha, os caracteres após o cursor podem ser novamente lidos.
+  -
+- MS Word com UIA: o comando de navegação rápida para próximo cabeçalho, em modo de navegação, já não fica preso no último cabeçalho de um documento, nem este cabeçalho é mostrado duas vezes na lista de elementos do NVDA. (#9540)
+- No Windows 8 e posteriores, a barra de estado do Explorador de ficheiros já pode ser anunciada utilizando o comando padrão NVDA+end (desktop) / NVDA+shift+end (laptop). (#12845)
+- As mensagens recebidas no chat do Skype para Empresas são novamente anunciadas automaticamente. (#9295)
+- O NVDA pode de novo diminuir o volume quando utiliza o sintetizador SAPI5 no Windows 11. (#12913)
+- Na Calculadora do Windows 10, o NVDA anunciará as etiquetas para as listas de itens do histórico e da memória. (#11858)
+- Comandos como deslocação da linha e o encaminhamento de células funcionam novamente com dispositivos HID Braille. (#13228)
+- Correio do Windows 11: Depois de mudar o foco entre aplicações, enquanto lê um longo e-mail, o NVDA já não fica preso numa linha do e-mail. (#13050)
+- Braille HID: comandos com a barra de espaços (por exemplo, "Espaço+ponto 4") podem ser executados com sucesso a partir do dispositivo Braille. (#13326)
+- Corrigido um problema em que se podiam abrir vários diálogos de configurações ao mesmo tempo. (#12818)
+- Resolvido um problema em que algumas linhas Braille Focus Blue deixavam de funcionar depois de acordar o computador. (#9830)
+- A "linha de base" deixa de ser anunciada quando a opção "Anunciar superescrito e subscrito" está activa. (#11078)
+- No Windows 11, o NVDA deixará de impedir a navegação no painel emoji ao seleccionar emojis. (#13104)
+- Evita que um bug provoque duplicação de anúncios quando se utiliza a Consola e o Terminal do Windows. (#13261)
+- Corrigidos vários casos em que os itens da lista não podiam ser anunciados em aplicações de 64 bit, tais como o REAPER. (#8175)
+- No gestor de transferências do Microsoft Edge, o NVDA passará agora automaticamente para o modo de foco assim que o item da lista com a transferência mais recente receber o foco. (#13221)
+- O NVDA já não faz com que as versões de 64 bits do Notepad++ 8.3 ou superior crachem. (#13311)
+- O Adobe Reader já não trava ao arrancar se o modo protegido do Adobe Reader estiver activado. (#11568)
+- Corrigido um erro em que a selecção do Driver da linha Braille Papenmeier provocava o crash do NVDA. (#13348)
+- No Microsoft Word com UIA: o número de página, ou outra formatação, já não é anunciado de forma inadequada, quando se passa de uma célula de tabela em branco para uma célula com conteúdo, ou do final do documento para o conteúdo existente. (#13458, #13459)
+- O NVDA já não deixa de anunciar o título da página e começar a ler automaticamente, quando uma página é carregada no Google chrome 100. (#13571)
+- O NVDA já não trava ao restaurar a configuração para o padrão original com anúncio de teclas de comando activado. (#13634)
+-
+
+
+== Alterações para desenvolvedores ==
+- Note: this is a Add-on API compatibility breaking release. Add-ons will need to be re-tested and have their manifest updated.
+- Although NVDA still requires Visual Studio 2019, Builds should no longer fail if a newer version of Visual Studio (E.g. 2022) is installed along side 2019. (#13033, #13387)
+- Updated SCons to version 4.3.0. (#13033)
+- Updated py2exe to version 0.11.1.0. (#13510)
+- ``NVDAObjects.UIA.winConsoleUIA.WinConsoleUIA.isImprovedTextRangeAvailable`` has been removed. Use ``apiLevel`` instead. (#12955, #12660)
+- ``TVItemStruct`` has been removed from ``sysTreeView32``. (#12935)
+- ``MessageItem`` has been removed from the Outlook appModule. (#12935)
+- ``audioDucking.AUDIODUCKINGMODE_*`` constants are now a ``DisplayStringIntEnum``. (#12926)
+  - usages should be replaced with ``AudioDuckingMode.*``
+  - usages of ``audioDucking.audioDuckingModes`` should be replaced with ``AudioDuckingMode.*.displayString``
+  -
+- ``audioDucking.ANRUS_ducking_*`` constants usages should be replaced with ``ANRUSDucking.*``. (#12926)
+- ``synthDrivers.sapi5`` changes (#12927):
+  - ``SPAS_*`` usages should be replaced with ``SPAudioState.*``
+  - ``constants.SVSF*`` usages should be replaced with ``SpeechVoiceSpeakFlags.*``
+    - Note: ``SVSFlagsAsync`` should be replaced with ``SpeechVoiceSpeakFlags.Async`` not ``SpeechVoiceSpeakFlags.lagsAsync``
+    -
+  - ``constants.SVE*`` usages should be replaced with ``SpeechVoiceEvents.*``
+  -
+- The "soffice" appModule has the following classes and functions removed ``JAB_OOTableCell``, ``JAB_OOTable``, ``gridCoordStringToNumbers``. (#12849)
+- ``core.CallCancelled`` is now ``exceptions.CallCancelled``. (#12940)
+- All constants starting with RPC from ``core`` and ``logHandler`` are moved into ``RPCConstants.RPC`` enum. (#12940)
+- It is recommended that ``mouseHandler.doPrimaryClick`` and ``mouseHandler.doSecondaryClick`` functions should be used to click the mouse to perform a logical action such as activating (primary) or secondary (show context menu),
+rather than using ``executeMouseEvent`` and specifying the left or right mouse button specifically.
+This ensures code will honor the Windows user setting for swapping the primary mouse button. (#12642)
+- ``config.getSystemConfigPath`` has been removed - there is no replacement. (#12943)
+- ``shlobj.SHGetFolderPath`` has been removed - please use ``shlobj.SHGetKnownFolderPath`` instead. (#12943)
+- ``shlobj`` constants have been removed. A new enum has been created, ``shlobj.FolderId`` for usage with ``SHGetKnownFolderPath``. (#12943)
+- ``diffHandler.get_dmp_algo`` and ``diffHandler.get_difflib_algo`` have been replaced with ``diffHandler.prefer_dmp`` and ``diffHandler.prefer_difflib`` respectively. (#12974)
+- ``languageHandler.curLang`` has been removed - to get the current NVDA language use ``languageHandler.getLanguage()``. (#13082)
+- A ``getStatusBarText`` method can be implemented on an appModule to customize the way NVDA fetches the text from the status bar. (#12845)
+- ``globalVars.appArgsExtra`` has been removed. (#13087)
+  - If your add-on need to process additional command line arguments see the documentation of ``addonHandler.isCLIParamKnown`` and the developer guide for details.
+  -
+- The UIA handler module and other UIA support modules are now part of a UIAHandler package. (#10916)
+  - ``UIAUtils`` is now ``UIAHandler.utils``
+  - ``UIABrowseMode`` is now ``UIAHandler.browseMode``
+  - ``_UIAConstants`` is now ``UIAHandler.constants``
+  - ``_UIACustomProps`` is now ``UIAHandler.customProps``
+  - ``_UIACustomAnnotations`` is now ``UIAHandler.customAnnotations``
+- The ``IAccessibleHandler`` ``IA2_RELATION_*`` constants have been replaced with the ``IAccessibleHandler.RelationType`` enum. (#13096)
+  - Removed ``IA2_RELATION_FLOWS_FROM``
+  - Removed ``IA2_RELATION_FLOWS_TO``
+  - Removed ``IA2_RELATION_CONTAINING_DOCUMENT``
+  -
+- ``LOCALE_SLANGUAGE``, ``LOCALE_SLIST`` and ``LOCALE_SLANGDISPLAYNAME`` are removed from ``languageHandler`` - use members of ``languageHandler.LOCALE`` instead. (#12753)
+- Switched from Minhook to Microsoft Detours as a hooking library for NVDA. Hooking with this library is mainly used to aid the display model. (#12964)
+- ``winVersion.WIN10_RELEASE_NAME_TO_BUILDS`` is removed. (#13211)
+- SCons now warns to build with a number of jobs that is equal to the number of logical processors in the system.
+This can dramatically decrease build times on multi core systems. (#13226, #13371)
+- ``characterProcessing.SYMLVL_*`` constants are removed - please use ``characterProcessing.SymbolLevel.*`` instead. (#13248)
+- Functions ``loadState`` and ``saveState`` are removed from addonHandler - please use ``addonHandler.state.load`` and ``addonHandler.state.save`` instead. (#13245)
+- Moved the UWP/OneCore interaction layer of NVDAHelper [from C++/CX to C++/Winrt https://docs.microsoft.com/en-us/windows/uwp/cpp-and-winrt-apis/move-to-winrt-from-cx]. (#10662)
+- It is now mandatory to subclass ``DictionaryDialog`` to use it. (#13268)
+- ``config.RUN_REGKEY``, ``config.NVDA_REGKEY`` are deprecated, please use ``config.RegistryKey.RUN``, ``config.RegistryKey.NVDA`` instead. These will be removed in 2023. (#13242)
+- ``easeOfAccess.ROOT_KEY``, ``easeOfAccess.APP_KEY_PATH`` are deprecated, please use``easeOfAccess.RegistryKey.ROOT``, ``easeOfAccess.RegistryKey.APP`` instead. These will be removed in 2023. (#13242)
+- ``easeOfAccess.APP_KEY_NAME`` has been deprecated, to be removed in 2023. (#13242)
+- ``DictionaryDialog`` and ``DictionaryEntryDialog`` are moved from ``gui.settingsDialogs`` to ``gui.speechDict``. (#13294)
+- IAccessible2 relations are now shown in developer info for IAccessible2 objects. (#13315)
+- ``languageHandler.windowsPrimaryLCIDsToLocaleNames`` has been removed, instead use ``languageHandler.windowsLCIDToLocaleName`` or ``winKernel.LCIDToLocaleName``. (#13342)
+- ``UIAAutomationId`` property for UIA objects should be preferred over ``cachedAutomationId``. (#13125, #11447)
+  - ``cachedAutomationId`` can be used if obtained directly from the element.
+  -
+- ``NVDAObjects.window.scintilla.CharacterRangeStruct`` has moved to ``NVDAObjects.window.scintilla.Scintilla.CharacterRangeStruct``. (#13364)
+- Boolean ``gui.isInMessageBox`` is removed, please use the function ``gui.message.isModalMessageBoxActive`` instead. (#12984, #13376)
+- ``controlTypes`` has been split up into various submodules. (#12510, #13588)
+  - ``ROLE_*`` and ``STATE_*`` have been replaced with ``Role.*`` and ``State.*``.
+  - Although still available, the following should be considered deprecated:
+    - ``ROLE_*`` and ``STATE_*``, use ``Role.*`` and ``State.*`` instead.
+    - ``roleLabels``, ``stateLabels`` and ``negativeStateLabels``, usages like ``roleLabels[ROLE_*]`` should be replaced with their equivalent ``Role.*.displayString`` or ``State.*.negativeDisplayString``.
+    - ``processPositiveStates`` and ``processNegativeStates`` should use ``processAndLabelStates`` instead.
+    -
+  -
+- Excel cell state constants (``NVSTATE_*``) are now values in the ``NvCellState`` enum, mirrored in the ``NvCellState`` enum in ``NVDAObjects/window/excel.py`` and mapped to ``controlTypes.State`` via _nvCellStatesToStates. (#13465)
+- ``EXCEL_CELLINFO`` struct member ``state`` is now ``nvCellStates``.
+- ``mathPres.ensureInit`` has been removed, MathPlayer is now initialized when NVDA starts. (#13486)
+-
+
+
+= 2021.3.5 =
+This is a minor release to fix a security issue.
+Please responsibly disclose security issues to info@nvaccess.org.
+
+== Security Fixes ==
+- Addressed security advisory ``GHSA-xc5m-v23f-pgr7``.
+  - The symbol pronunciation dialog is now disabled in secure mode.
+  -
+-
+
+
+= 2021.3.4 =
+This is a minor release to fix several security issues raised.
+Please responsibly disclose security issues to info@nvaccess.org.
+
+== Security Fixes ==
+- Addressed security advisory ``GHSA-354r-wr4v-cx28``. (#13488)
+  - Remove the ability to start NVDA with debug logging enabled when NVDA runs in secure mode.
+  - Remove the ability to update NVDA when NVDA runs in secure mode.
+  -
+- Addressed security advisory ``GHSA-wg65-7r23-h6p9``. (#13489)
+  - Remove the ability to open the input gestures dialog in secure mode.
+  - Remove the ability to open the default, temporary and voice dictionary dialogs in secure mode.
+  -
+- Addressed security advisory ``GHSA-mvc8-5rv9-w3hx``. (#13487)
+  - The wx GUI inspection tool is now disabled in secure mode.
+  -
+-
+
+
+= 2021.3.3 =
+This release is identical to 2021.3.2.
+A bug existed in NVDA 2021.3.2 where it incorrectly identified itself as 2021.3.1.
+This release correctly identifies itself as 2021.3.3.
+
+
+= 2021.3.2 =
+This is a minor release to fix several security issues raised.
+Please responsibly disclose security issues to info@nvaccess.org.
+
+
+== Bug Fixes ==
+- Security fix: Prevent object navigation outside of the lockscreen on Windows 10 and Windows 11. (#13328)
+- Security fix: The addons manager dialog is now disabled on secure screens. (#13059)
+- Security fix: NVDA context help is no longer available on secure screens. (#13353)
+-
+
+
+= 2021.3.1 =
+This is a minor release to fix several issues in 2021.3.
+
+
+== Changes ==
+- The new HID Braille protocol is no longer preferred when another braille display driver can be used. (#13153)
+- The new HID Braille protocol can be disabled via a setting in the advanced settings panel. (#13180)
+-
+
+
+== Bug Fixes ==
+- Landmark is once again abbreviated in braille. #13158
+- Fixed unstable braille display auto detection for Humanware Brailliant and APH Mantis Q40 braille displays when using Bluetooth. (#13153)
+-
+
+
+= 2021.3 =
+Esta versão introduz, entre muitas novidades:
+- Suporte para a nova especificação HID Braille:
+		Esta especificação ambiciona padronizar o suporte às linhas Braille, evitando assim  a necessidade de drivers individuais.
+- Actualizações do eSpeak-NG e do LibLouis, incluindo novas tabelas Braille (Russo e Tshivenda).
+- Os sons de erro podem ser activados nas versões estáveis do NVDA, via uma nova opção nas configurações avançadas;
+- A leitura contínua no Word passa a mover o texto, para que a posição de leitura esteja sempre visível;
+- Muitas melhorias ao usar o Office com UIA;
+		Uma das melhorias da UIA é o Outlook passar a ignorar mais tipos de tabelas de formatação nas mensagens.
+
+Nota importante:
+Devido a uma actualização do nosso certificado de segurança, alguns utilizadores recebem um erro quando o NVDA 2021.2 verifica se há atualizações. 
+O NVDA passa a usar as actualizações dos certificados de segurança do Windows, o que impedirá este erro no futuro.
+Os utilizadores afectados terão de descarregar esta actualização manualmente.
+
+
+== Novas Funcionalidades ==
+- Adicionado um comando para alternar o anúncio do estilo das bordas das células. (#10408)
+- Suporte para a nova especificação HID Braille, que ambiciona padronizar o suporte às linhas Braille, evitando assim  a necessidade de drivers individuais. (#12523)
+  - Os dispositivos que suportem esta especificação serão automaticamente  detectados pelo NVDA.
+  - Para detalhes técnicos sobre a implementação desta especificação pelo NVDA, consulte https://github.com/nvaccess/nvda/blob/master/devDocs/hidBrailleTechnicalNotes.md
+  -
+- Adicionado suporte para a linha Braille VisioBraille Vario 4. (#12607)
+- As notificações de erro podem ser activadas (nas configurações avançadas) em qualquer versão do NVDA. (#12672)
+- No Windows 10 e seguintes, o NVDA anunciará o número de sugestões ao introduzir termos a pesquisar em aplicações como Definições e  Microsoft Store. (#7330, #12758, #12790)
+- A navegação em tabelas passa a ser suportada em "grid controls" criados usando o "Out-GridView cmdlet" no PowerShell. (#12928)
+-
+
+
+== Alterações ==
+- Actualizado o eSpeak-ng para a versão 1.51-dev commit ``74068b91bcd578bd7030a7a6cde2085114b79b44``. (#12665)
+- O NVDA escolherá o eSpeak como padrão se nenhuma voz do Windows OneCore voices instalada suportar o idioma preferido do NVDA. (#10451)
+- Se as vozes Windows OneCore voices consistentemente falharem, o NVDA reverte para o eSpeak. (#11544)
+- Ao ler a barra de estado, com "NVDA+end", o cursor de revisão já não é posicionado na sua localização.
+Se necessitar desta funcionalidade, associe um comando ao script na secção Navegação por Objectos no diálogo "Definir comandos". (#8600)
+- Se abrir um diálogo de configurações que já esteja aberto, o NVDA focar-se-á no diálogo existente em vez de provocar um erro. (#5383)
+- Actualizado o conversor Braille liblouis para a versão [3.19.0 https://github.com/liblouis/liblouis/releases/tag/v3.19.0]. (#12810)
+  - Novas tabelas Braille: Russo grau 1, Tshivenda grau 1 e Tshivenda grau 2
+  -
+- Em vez de "conteúdo marcado" ou "mrcd", "realçado" ou "realc" será anunciado por voz ou Braille, respectivamente. (#12892)
+-
+
+
+== Correcções ==
+- Registar as teclas modificadoras, como Control, ou Insert) está mais robusto, quando o watchdog está a tentar recuperar o NVDA. (#12609)
+- É novamente possível verificar por actualizações do NVDA em certos sistemas, por exemplo em  novas instalações de raíz do Windows. (#12729)
+- O NVDA anuncia correctamente células em branco de tabelas no Microsoft Word se usar UI automation. (#11043)
+- Em células de grelha de dados ARIA na web, a tecla Escape é agora passada para a grelha e já não desliga o modo de foco incondicionalmente. (#12413)
+- Ao ler uma célula título de uma tabela no Chrome, já não é lido o o nome da coluna duas vezes. (#10840)
+- O NVDA já não anuncia um valor numérico para UIA sliders que possuam uma descrição textual do seu valor. (UIA ValuePattern é agora preferido a RangeValuePattern). (#12724)
+- O NVDA já não trata sempre os valores de UIA sliders como percentagem.
+- O anúncio da localização de uma célula do Microsoft Excel, acedido via UI Automation, volta a funcionar correctamente no Windows 11. (#12782)
+- O NVDA já não define locales Python inválidos. (#12753)
+- Se um extra desactivado é desinstalado e depois reinstalado, é automaticamente activado. (#12792)
+- Corrigidos vários bugs na actualização e remoção de extras quando a pasta respectiva foi renomeada ou tem ficheiros abertos. (#12792, #12629)
+- Ao usar a UI Automation para aceder aos controlos de uma folha do  Microsoft Excel, o NVDA já não anuncia seleccionado quando só está seleccionada uma célula. (#12530)
+- Mais texto é lido automaticamente nos  diálogos do LibreOffice Writer, como nos diálogos de confirmação. (#11687)
+- Ao ler ou navegar em modo de navegação no Microsoft Word via UI automation o documento é sempre deslizado para que a posição do modo de navegação esteja sempre visível e que a posição do cursor em modo de foco esteja correctamente sincronizada. (#9611)
+- Em leitura contínua no Microsoft Word via UI automation, o documento é deslizado para que a posição do cursor esteja sempre visível. (#9611)
+- Ao ler e-mails no Microsoft Outlook e com o NVDA acedendo às mensagens com a UI Automation, certas tabelas são marcadas como apenas de formatação e não serão anunciadas. (#11430)
+- Um erro raro ao seleccionar outro dispositivo de saída áudio foi corrigido. (#12620)
+- A introdução de texto com as tabelas de Braille literário já deve ser mais confiável em campos de edição. (#12667)
+- Ao navegar o calendário da área de notificação do Windows, o NVDA já anuncia o dia da semana. (#12757)
+- Quando se usa um método de entrada Chinês, como Taiwan - Microsoft Quick no Microsoft Word, deslocar a linha Braille para a frente ou para trás, já não continua a saltar novamente para a posição original do cursor. (#12855)
+- Ao acessar os documentos do Microsoft Word via UIA, volta a ser possível navegar por frase (alt+seta abaixo / alt+seta acima). (#9254)
+- Ao acessar o Microsoft Word com a UIA, a indentação de parágrafos passa a ser anunciada. (#12899)
+- Ao acessar o Microsoft Word com a UIA, alguns comandos traduzíveis passam a ser anunciados pelo próprio Word. (#12904)
+- Corrigida a duplicação em Braille e voz quando a 'descrição' é igual ao conteúdo ou ao nome. (#12888)
+- No Microsoft Word com a UIA activada, a notificação de erros ortográficos é mais correcta. (#12161)
+- No Windows 11, o NVDA já não anuncia "painel" ao pressionar Alt+Tab para alternar entre programas. (#12648)
+- O Moderno painel lateral de seguimento de Comentários já é suportado no Microsoft  Word quando não é acessado via UIA. Pressione alt+f12 para se mover entre o painel lateral e o documento. (#12982)
+-
+
+
+== Changes for Developers ==
+- Building NVDA now requires Visual Studio 2019 16.10.4 or later.
+To match the production build environment, update Visual Studio to keep in sync with the [current version AppVeyor is using https://www.appveyor.com/docs/windows-images-software/#visual-studio-2019]. (#12728)
+- ``NVDAObjects.UIA.winConsoleUIA.WinConsoleUIA.isImprovedTextRangeAvailable`` has been deprecated for removal in 2022.1. (#12660)
+  - Instead use ``apiLevel`` (see the comments at ``_UIAConstants.WinConsoleAPILevel`` for details).
+  -
+- Transparency of text background color sourced from GDI applications (via the display model), is now exposed for add-ons or appModules. (#12658)
+- ``LOCALE_SLANGUAGE``, ``LOCALE_SLIST`` and ``LOCALE_SLANGDISPLAYNAME`` are moved to the ``LOCALE`` enum in languageHandler.
+They are still available at the module level but are deprecated and to be removed in NVDA 2022.1. (#12753)
+- The usage of functions ``addonHandler.loadState`` and ``addonHandler.saveState`` should be replaced with their equivalents ``addonHandler.state.save`` and ``addonHandler.state.load`` before 2022.1. (#12792)
+- Braille output can now be checked in system tests. (#12917)
+-
+
+
+= 2021.2 =
+Esta versão apresenta um suporte preliminar ao Windows 11.
+Apesar de o Windows 11 ainda não ter sido lançado, esta versão foi testada em versões de teste do Windows 11.
+Isto inclui uma correcção importante para a cortina de ecrã (consulte "Notas importantes").
+A Ferramenta de correcção de registo de DLLs agora resolve mais problemas durante a execução do NVDA.
+Há atualizações para o sintetizador eSpeak e o conversor Braille LibLouis.
+Há também várias correções de bugs e melhorias, principalmente para suporte Vraille e terminais do Windows, calculadora, painel de emoji e histórico da área de transferência.
+
+
+== Notas importantes ==
+Devido a alterações na API do Windows Magnification, a  "Cortina de ecrã" teve de ser actualizada para suportar as novas versões do Windows.
+Use o NVDA 2021.2 para activar a Cortina de ecrã no Windows 10 21H2 (10.0.19044) ou superior.
+Isto inclui o Windows 10 Insiders e o Windows 11.
+Para se certificar que está seguro, ao usar uma nova versão do Windows, tente obter confirmação visual de que a "Cortina de ecrã" funciona devidamente nessa versão do Windows.
+
+
+== Novas funcionalidades ==
+- Suporte para anotações ARIA:
+  - adicionado um comando para anunciar o sumário de detalhes dum objecto com aria-details. (#12364)
+  - adicionada uma opção na secção Avançadas para anunciar se um objecto tem detalhes no Modo de navegação. (#12439) 
+  -
+- No Windows 10 Versão 1909 e superiores, (incluindo o Windows 11), o NVDA anunciará a contagem de sugestões ao executar pesquisas no Explorador de ficheiros. (#10341, #12628)
+- No Microsoft Word, o NVDA agora anuncia o resultado da indentação e dos atalhos de indentação suspensos quando executados. (#6269)
+-
+
+
+== Alterações ==
+- Atualizado o Espeak-ng para a versão 1.51-dev commit ``ab11439b18238b7a08b965d1d5a6ef31cbb05cbb``. (#12449, #12202, #12280, #12568)
+- Se nas configurações de Formatação de documentos estiver marcado para anunciar Artigos, o NVDA anunciará "Artigo" após o conteúdo. (#11103)
+- Atualizado o conversor Braille liblouis para a versão [3.18.0 https://github.com/liblouis/liblouis/releases/tag/v3.18.0]. (#12526)
+  - Novas tabelas  Braille: Búlgaro grau 1, Birmanês grau 1, Birmanês grau 2, Cazaque grau 1, Khmer grau 1, Curdo do Norte grau 0, Sepedi grau 1, Sepedi grau 2, Sesotho grau 1, Sesotho grau 2, Setswana grau 1, Setswana grau 2, Tatar grau 1, Vietnamita grau 0, Vietnamita grau 2, Sulvietnamita grau 1, Xhosa grau 1, Xhosa grau 2, Yakut grau 1, Zulu grau 1, Zulu grau 2
+  -
+- Windows 10 OCR foi renomeado para Windows OCR. (#12690)
+-
+
+
+== Correcção de erros ==
+- Na Calculadora do Windows 10, o NVDA passa a mostrar as expressões de cálculo em Braille. (#12268)
+- Em programas de  terminal no Windows 10, versão 1607 e seguintes, ao introduzir ou apagar caracteres no meio de uma linha, os caracteres à direita já não são lidos. (#3200)
+  - Diff Match Patch passa a predefinição. (#12485)
+  -
+- A escrita Braille já funciona bem nas seguintes tabelas de grau 2: Árabe, Espanhol, Urdu, Chinês (China, Mandarin). (#12541)
+- A ferramenta de correcção de DLL's já resolve mais problemas, eespecialmente em sistemas de 64 bit. (#12560)
+- Melhorias no tratamento das teclas dos Notetakers Braille Seika da Nippon Telesoft. (#12598)
+- Melhorias no anúncio do Painel de emojis do Windows e do Histórico da Área de transferências. (#11485)
+- Actualizadas as descrições dos caracteres alfabéticos Bengali. (#12502)
+- O NVDA já é fechado em segurança quando um novo processo é iniciado. (#12605)
+- Reseleccionar as linhas Braille Handy Tech pelo diálogo Seleccionar Linha Braille já não causa erros. (#12618)
+- O Windows versão 10.0.22000 ou posterior é reconhecido como Windows 11, e não Windows 10. (#12626)
+- O suporte à Curtina de ecrã foi corrigido e testado até à versão Windows 10.0.22000. (#12684)
+- Se não forem mostrados resultados ao filtrar comandos, o diálogo continuará a funcionar como é devido. (#12673)
+-
+
+
+== Alterações para desenvolvedores ==
+- ``characterProcessing.SYMLVL_*`` constants should be replaced using their equivalent ``SymbolLevel.*`` before 2022.1. (#11856, #12636)
+- ``controlTypes`` has been split up into various submodules, symbols marked for deprecation must be replaced before 2022.1. (#12510)
+  - ``ROLE_*`` and ``STATE_*`` constants should be replaced to their equivalent ``Role.*`` and ``State.*``.
+  - ``roleLabels``, ``stateLabels`` and ``negativeStateLabels`` have been deprecated, usages such as ``roleLabels[ROLE_*]`` should be replaced to their equivalent ``Role.*.displayString`` or ``State.*.negativeDisplayString``.
+  - ``processPositiveStates`` and ``processNegativeStates`` have been deprecated for removal.
+  -
+- On Windows 10 Version 1511 and later (including Insider Preview builds), the current Windows feature update release name is obtained from Windows Registry. (#12509)
+- Deprecated: winVersion.WIN10_RELEASE_NAME_TO_BUILDS will be removed in 2022.1, there is no direct replacement. (#12544)
+-
+
+
+= 2021.1 =
+Esta versão inclui, entre muitas outras novidades:
+- Suporte opcional, experimental, para UIA no Excel e nos navegadores baseados no Chromium;
+- Correcções  para vários idiomas;
+- Melhoria no acesso aos links em Braille;
+- Actualização ao dicionário CLDR Unicode, símbolos matemáticos e LibLouis;
+- Muitas correcções de erros;
+- Várias melhorias no Office e Visual Studio.
+-
+Notas importantes:
+- Esta versão exige uma mudança na API de compatibilidade dos extras.
+Os extras terão de ser testados e, pelo menos, reflectir esta mudança no manifest.ini.
+- Esta versão termina com o suporte ao Adobe Flash.
+-
+
+
+== Novas Funcionalidades ==
+- Suporte inicial ao UIA com navegadores baseados em Chromium (como o Edge). (#12025)
+- Suporte opcional, experimental, ao Microsoft Excel via UI Automation. Apenas recomendado para Microsoft Excel build 16.0.13522.10000 ou superior. (#12210)
+- Navegação facilitada nos resultados na Consola Python do NVDA. (#9784)
+  - alt+seta acima/abaixo salta para o anterior/próximo resultado (juntar shift para seleccionar);
+  - control+l limpa o painel de resultados;
+- O NVDA passa a anunciar as categorias associadas a um compromisso no Microsoft Outlook, se houver algum. (#11598)
+- Suporte para os dispositivos Braille Seika da Nippon Telesoft. (#11514)
+
+
+== Alterações ==
+- No modo de navegação, os controlos já podem ser activados com os cursores de toque da linha Braille na descrição, por exemplo, "lnk" para um link. Isto é especialmente útil para activar uma caixa de verificação sem etiqueta. (#7447)
+- O NVDA passa a impedir a execução do OCR do Windows 10 se a cortina de ecrã estiver activa. (#11911)
+- Actualizado o Repositório CLDR Unicode para a versão 39.0. (#11943, #12314)
+- Adicionados mais símbolos matemáticos ao dicionário de símbolos. (#11467)
+- O "Manual do utilizador" e os documentos "O que há de novo" e "Referência rápida de comandos" têm uma aparência melhorada. (#12027)
+- Ao tentar alterar a disposição do ecrã, numa aplicação que não o suporte, como o Word, passa a ser anunciado "Não suportado neste documento". (#7297)
+- A opção "Tentar cancelar a voz para eventos de foco expirados" da secção Avançadas das configurações do NVDA passa a estar activa por padrão. (#10885)
+  - Este comportamento pode ser desactivado definindo a opção para "Não".
+  - As aplicações Web, como o GMail, já não anunciam informações atrasadas ao mover o foco rápidamente.
+- Actualizado o conversor Braille liblouis para a versão [3.17.0 https://github.com/liblouis/liblouis/releases/tag/v3.17.0]. (#12137)
+  - Novas tabelas Braille: Bielorrusso Braille literário, Bielorrusso Braille de computador, Urdu grau 1 e Urdu grau 2.
+- O suporte ao conteúdo em Adobe Flash foi removido do NVDA, devido ao seu uso ser activamente desencorajado pela Adobe. (#11131)
+- O NVDA será terminado mesmo que exista alguma janela aberta, pois o processo de terminar fechará qualquer janela ou caixa de diálogo do NVDA que ainda esteja aberta. (#1740)
+- O Visualizador de discurso já pode ser fechado com "alt+F4" e passa a ter um botão padrão de fechar para facilitar quem usa o rato ou outro dispositivo apontador. (#12330)
+- O Visualizador Braille passa a ter um botão padrão de fechar para facilitar quem usa o rato ou outro dispositivo apontador. (#12328)
+- Na Lista de Elementos a tecla de atalho para o botão Activar foi removida em alguns idiomas  para não colidir com o atalho para um botão de rádio de tipos de elementos. Quando disponível, o botão conttinua a ser o predefinido, e como tal pode ser activado com Enter. (#6167)
+
+
+== Correcção de erros ==
+- A lista de mensagens no Outlook 2010 volta a ser possível de ser navegada. (#12241)
+- Nos programas de consola no Windows 10 versão 1607 e superiores, ao inserir ou apagar caracteres no meio de uma linha, os caracteres à direita do cursor já não são falados. (#3200)
+  - Esta correcção experimental deve ser activada manualmente nas configurações avançadas do NVDA alterando "Algoritmo diff" para "Diff Match Patch".
+- No Microsoft Outlook, o anúncio sem sentido da distância ao pressionar shift+tab no corpo da mensagem para o campo "Assunto:" já não deverá acontecer. (#10254)
+- Na Consola Python, inserir um tab para fins de indentação no início de uma linha ou completar o número de tabs no meio de uma linha já é suportado. (#11532)
+- Informação de formatação e outras mensagens em modo de navegação já não apresentam linhas em branco não esperadas, quando a disposição de ecrã está desactivada. (#12004)
+- Já é possível ler comentários no Microsoft Word com a UIA activada. (#9285)
+- Melhorada a performance ao interagir com o Visual Studio. (#12171)
+- Corrigidos bugs gráficos, tais como elementos em falta ao usar o NVDA com uma interface da direita para a esquerda. (#8859)
+- Respeitar a direcção do esquema da interface gráfica baseando-se no idioma do NVDA e não no idioma do sistema. (#638)
+  - Problema conhecido nos idiomas da direita para a esquerda: a borda direita de agrupamentos com controlos/etiquetas. (#12181)
+- O idioma do python é configurado para coincidir, consistentemente, com o idioma seleccionado nas preferências do NVDA, mesmo que esteja configurado para "Predefinição  do utilizador". (#12214)
+- TextInfo.getTextInChunks já não "congela" quando invocado em controlos Rich Edit, tais como o Visualizador de registo  do NVDA. (#11613)
+- É novamente possível usar o NVDA em idiomas contendo sublinhados no nome do idioma (locale name) como pt_PT no Windows 10 1803 e 1809. (#12250)
+- No WordPad, a configuração de anúncio de superescrito/subscrito já funciona como esperado. (#12262)
+- O NVDA já não falha ao anunciar o novo conteúdo focado numa página Web por o foco anterior desaparecer e ser substituido pelo novo na mesma posição. (#12147)
+- Já são anunciados os atributos de formatação riscado, superescrito e subscrito para células completas do Excelse a correspondente opção estiver marcada. (#12264)
+- Corrigido o erro da cópia das configurações durante a instalação a partir de uma cópia portátil, quando a pasta de destino está vazia. (#12071, #12205)
+- Corrigido o anúncio incorrecto de algumas letras com acentos ou diacríticos quando a opção "Anunciar maiúscula antes de letras maiúsculas" está marcada. (#11948)
+- Corrigida a falha na alteração da entoação no sintetizador SAPI4. (#12311)
+- O instalador do NVDA já respeita o parâmetro de linha de comando "--minimal" e já não toca o som de início, seguindo o que está documentado para o executável das cópias instaladas ou portáteis do NVDA. (#12289)
+- No Microsoft Word ou Outlook, a navegação rápida para tabelas já salta para tabelas de formatação, se a opção "Incluir tabelas de formatação", da secção Modo de navegação das configurações do NVDA estiver marcada. (#11899)
+- O NVDA já não anunciará "↑↑↑" para emojis em alguns idiomas. (#11963)
+
+
+== Alterações para desenvolvedores ==
+- Note: this is an Add-on API compatibility breaking release. Add-ons will need to be re-tested and have their manifest updated.
+- NVDA's build system now fetches all Python dependencies with pip and stores them in a Python virtual environment. This is all done transparently.
+  - To build NVDA, SCons should continue to be used in the usual way. E.g. executing scons.bat in the root of the repository. Running ``py -m SCons`` is no longer supported, and ``scons.py`` has also been removed.
+  - To run NVDA from source, rather than executing ``source/nvda.pyw`` directly, the developer should now use ``runnvda.bat`` in the root of the repository. If you do try to execute ``source/nvda.pyw``, a message box will alert you this is no longer supported.
+  - To perform unit tests, execute ``rununittests.bat [<extra unittest discover options>]``
+  - To perform system tests: execute ``runsystemtests.bat [<extra robot options>]``
+  - To perform linting, execute ``runlint.bat <base branch>``
+  - Please refer to readme.md for more details.
+- The following Python dependencies have also been upgraded:
+  - comtypes updated to 1.1.8.
+  - pySerial updated to 3.5.
+  - wxPython updated to 4.1.1.
+  - Py2exe updated to 0.10.1.0.
+- ``LiveText._getTextLines`` has been removed. (#11639)
+  - Instead, override ``_getText`` which returns a string of all text in the object.
+- ``LiveText`` objects can now calculate diffs by character. (#11639)
+  - To alter the diff behaviour for some object, override the ``diffAlgo`` property (see the docstring for details).
+- When defining a script with the script decorator, the 'allowInSleepMode' boolean argument can be specified to control if a script is available in sleep mode or not. (#11979)
+- The following functions are removed from the config module. (#11935)
+  - canStartOnSecureScreens - use config.isInstalledCopy instead.
+  - hasUiAccess and execElevated - use them from the systemUtils module.
+  - getConfigDirs - use globalVars.appArgs.configPath instead.
+- Module level REASON_* constants are removed from controlTypes - please use controlTypes.OutputReason instead. (#11969)
+- REASON_QUICKNAV has been removed from browseMode - use controlTypes.OutputReason.QUICKNAV instead. (#11969)
+- ``NVDAObject`` (and derivatives) property ``isCurrent`` now strictly returns Enum class ``controlTypes.IsCurrent``. (#11782)
+  - ``isCurrent`` is no longer Optional, and thus will not return None.
+  - When an object is not current ``controlTypes.IsCurrent.NO`` is returned.
+- The ``controlTypes.isCurrentLabels`` mapping has been removed. (#11782)
+  - Instead use the ``displayString`` property on a ``controlTypes.IsCurrent`` enum value. EG ``controlTypes.IsCurrent.YES.displayString``
+- ``NVDAObject`` (and derivatives) property ``isCurrent`` now strictly returns ``controlTypes.IsCurrent``. (#11782)
+  - ``isCurrent`` is no longer Optional, and thus will not return None, when an object is not current ``controlTypes.IsCurrent.NO`` is returned.
+- The ``controlTypes.isCurrentLabels`` has been removed, instead use the ``displayString`` property on a ``controlTypes.IsCurrent`` enum value. (#11782)
+  - EG ``controlTypes.IsCurrent.YES.displayString``
+- ``winKernel.GetTimeFormat`` has been removed - use ``winKernel.GetTimeFormatEx`` instead. (#12139)
+- ``winKernel.GetDateFormat`` has been removed - use ``winKernel.GetDateFormatEx`` instead. (#12139)
+- ``gui.DriverSettingsMixin`` has been removed - use ``gui.AutoSettingsMixin``. (#12144)
+- ``speech.getSpeechForSpelling`` has been removed - use ``speech.getSpellingSpeech``. (#12145)
+- Commands cannot be directly imported from speech as ``import speech; speech.ExampleCommand()`` or ``import speech.manager; speech.manager.ExampleCommand()`` - use ``from speech.commands import ExampleCommand`` instead. (#12126)
+- ``speakTextInfo`` will no longer send speech through ``speakWithoutPauses`` if reason is ``SAYALL``, as ``SayAllHandler`` does this manually now. (#12150)
+- The ``synthDriverHandler`` module is no longer star imported into ``globalCommands`` and ``gui.settingsDialogs`` - use ``from synthDriverHandler import synthFunctionExample`` instead. (#12172)
+- ``ROLE_EQUATION`` has been removed from controlTypes - use ``ROLE_MATH`` instead. (#12164)
+- ``autoSettingsUtils.driverSetting`` classes are removed from ``driverHandler`` - please use them from ``autoSettingsUtils.driverSetting``. (#12168)
+- ``autoSettingsUtils.utils`` classes are removed from ``driverHandler`` - please use them from ``autoSettingsUtils.utils``. (#12168)
+- Support of ``TextInfo``s that do not inherit from ``contentRecog.BaseContentRecogTextInfo`` is removed. (#12157)
+- ``speech.speakWithoutPauses`` has been removed - please use ``speech.speechWithoutPauses.SpeechWithoutPauses(speakFunc=speech.speak).speakWithoutPauses`` instead. (#12195, #12251)
+- ``speech.re_last_pause`` has been removed - please use ``speech.speechWithoutPauses.SpeechWithoutPauses.re_last_pause`` instead. (#12195, #12251)
+- ``WelcomeDialog``, ``LauncherDialog`` and ``AskAllowUsageStatsDialog`` are moved to the ``gui.startupDialogs``. (#12105)
+- ``getDocFilePath`` has been moved from ``gui`` to the ``documentationUtils`` module. (#12105)
+- The gui.accPropServer module as well as the AccPropertyOverride and ListCtrlAccPropServer classes from the gui.nvdaControls module have been removed in favor of WX native support for overriding accessibility properties. When enhancing accessibility of WX controls, implement wx.Accessible instead. (#12215)
+- Files in ``source/comInterfaces/`` are now more easily consumable by developer tools such as IDEs. (#12201)
+- Convenience methods and types have been added to the winVersion module for getting and comparing Windows versions. (#11909)
+  - isWin10 function found in winVersion module has been removed.
+  - class winVersion.WinVersion is a comparable and order-able type encapsulating Windows version information.
+  - Function winVersion.getWinVer has been added to get a winVersion.WinVersion representing the currently running OS.
+  - Convenience constants have been added for known Windows releases, see winVersion.WIN* constants.
+- IAccessibleHandler no longer star imports everything from IAccessible and IA2 COM interfaces - please use them directly. (#12232)
+- TextInfo objects now have start and end properties which can be compared mathematically with operators such as < <= == != >= >. (#11613)
+  - E.g. ti1.start <= ti2.end
+  - This usage is now prefered instead of ti1.compareEndPoints(ti2,"startToEnd") <= 0
+- TextInfo start and end properties can also be set to each other. (#11613)
+  - E.g. ti1.start = ti2.end
+  - This usage is prefered instead of ti1.SetEndPoint(ti2,"startToEnd")
+- ``wx.CENTRE_ON_SCREEN`` and ``wx.CENTER_ON_SCREEN`` are removed, use ``self.CentreOnScreen()`` instead. (#12309)
+- ``easeOfAccess.isSupported`` has been removed, NVDA only supports versions of Windows where this evaluates to ``True``. (#12222)
+- ``sayAllHandler`` has been moved to ``speech.sayAll``. (#12251)
+  - ``speech.sayAll.SayAllHandler`` exposes the functions ``stop``, ``isRunning``, ``readObjects``, ``readText``, ``lastSayAllMode``.
+  - ``SayAllHandler.stop`` also resets the ``SayAllHandler`` ``SpeechWithoutPauses`` instance.
+  - ``CURSOR_REVIEW`` and ``CURSOR_CARET`` has been replaced with ``CURSOR.REVIEW`` and ``CURSOR.CARET``.
+- ``speech.SpeechWithoutPauses`` has been moved to ``speech.speechWithoutPauses.SpeechWithoutPauses``. (#12251)
+- ``speech.curWordChars`` has been renamed ``speech._curWordChars``. (#12395)
+- the following have been removed from ``speech`` and can be accessed through ``speech.getState()``. These are readonly values now. (#12395)
+  - speechMode
+  - speechMode_beeps_ms
+  - beenCanceled
+  - isPaused
+- to update ``speech.speechMode`` use ``speech.setSpeechMode``. (#12395)
+- the following have been moved to ``speech.SpeechMode``. (#12395)
+  - ``speech.speechMode_off`` becomes ``speech.SpeechMode.off``
+  - ``speech.speechMode_beeps`` becomes ``speech.SpeechMode.beeps``
+  - ``speech.speechMode_talk`` becomes ``speech.SpeechMode.talk``
+- ``IAccessibleHandler.IAccessibleObjectIdentifierType`` is now ``IAccessibleHandler.types.IAccessibleObjectIdentifierType``. (#12367)
+- The following in ``NVDAObjects.UIA.WinConsoleUIA`` have been changed (#12094)
+  - ``NVDAObjects.UIA.winConsoleUIA.is21H1Plus`` renamed ``NVDAObjects.UIA.winConsoleUIA.isImprovedTextRangeAvailable``.
+  - ``NVDAObjects.UIA.winConsoleUIA.consoleUIATextInfo`` renamed to start class name with upper case.
+  - ``NVDAObjects.UIA.winConsoleUIA.consoleUIATextInfoPre21H1`` renamed ``NVDAObjects.UIA.winConsoleUIA.ConsoleUIATextInfoWorkaroundEndInclusive``
+    - The implementation works around both end points being inclusive (in text ranges) before [microsoft/terminal PR 4018 https://github.com/microsoft/terminal/pull/4018]
+    - Workarounds for ``expand``, ``collapse``, ``compareEndPoints``, ``setEndPoint``, etc
+
+
+= 2020.4 =
+Nesta versão destacam-se as seguintes novidades:
+Novos métodos de entrada em chinês;
+Actualização do conversor Liblouis;
+A lista de elementos (NVDA + f7) já funciona em modo de foco;
+Ajuda sensível ao contexto disponível ao pressionar F1 nas janelas de configuração do NVDA;
+Diversas melhorias em regras de pronúncia de pontuação/símbolo, dicionário de voz, mensagens em Braille e leitura rápida;
+Várias correcções e melhorias no Correio, Outlook, Teams, Visual Studio, Azure Data Studio, e Foobar2000;
+Na web, há melhorias no Google Docs e maior suporte para ARIA;
+Muitas outras correcções e melhorias importantes.
+
+== Novas Funcionalidades ==
+- Ao pressionar F1 nas janelas de configuração do NVDA abre-se o Manual do utilizador na secção apropriada. (#7757)
+- Suporte para sugestões de "auto complete" (IntelliSense) no Microsoft SQL Server Management Studio mais Visual Studio 2017 e superior. (#7504)
+- Pronúncia de pontuação/símbolo: Suporte para agrupamento na definição dum símbolo complexo e suporte a referências a grupos nas regras de substituição, tornando-os mais simples e poderosos(#11107)
+- Os utilizadores passam a ser notificados quando tentam criar entradas de dicionário de voz com substituições de expressão regular inválidas. (#11407)
+  - Especificamente, erros de agrupamento passam a ser detectados.
+- Adicionado suporte para os novos métodos de entrada rápida e pinyin em chinês tradicional no Windows 10.(#11562)
+- Os cabeçalhos de tabelas passam a ser considerados campos de formulário com navegação rápida tecla f. (#10432)
+- Adicionado um comando para alternar o anúncio de texto marcado (realçado), sem nenhuma predefinição. (#11807)
+- Adicionado o parâmetro de linha de comando --copy-portable-config que permite copiar automaticamente a configuração fornecida para a conta do utilizador ao instalar silenciosamente o NVDA. (#9676)
+- Encaminhar para a célula Braille já é possível no Visualizador Braille colocando o rato na célula para onde se quer encaminhar o foco. (#11804)
+- O NVDA já detecta automaticamente as linhas Braille Humanware Brailliant BI 40X e 20X via USB e Bluetooth. (#11819)
+
+
+== Alterações ==
+- Actualizado o conversor braille liblouis para a versão 3.16.1:
+ - Resolve múltiplos craches;
+ - Adiciona a tabela Braille Bashkir grau 1;
+ - adiciona a tabela Braille Copta 8 pontos Braille de computador;
+ - adiciona as tabelas Braille literário Russo e Braille literário Russo (detalhado);
+ - adiciona a tabela Braille Afrikaans grau 2;
+ - Remove a tabela Braille Russo grau 1.
+- Em leitura contínua, em modo de navegação, os comandos localizar anterior e localizar próximo já não interrompem a leitura se a opção permitir leitura rápida estiver activada. Em vez disso, a leitura contínua é retomada após a expressão pesquisada. (#11563)
+- Nas linhas Braille da HIMS  F3 foi remapeada para Espaço + pontos 148. (#11710)
+- Melhoramentos nas opções "Tempo de permanência de mensagens" e "Mostrar mensagens indefinidamente" das configurações de Braille. (#11602)
+- Nos navegadores Web e outras aplicações que permitam o modo de navegação, a Lista de elementos (NVDA+F7) já pode ser invocada em modo de foco. (#10453)
+- Actualizações de ARIA live regions passam a ser suprimidas quando o anúncio de conteúdo dinâmico estiver desactivado. (#9077)
+- O NVDA passa a anunciar "Copiado:" antes do texto copiado. (#6757)
+- A apresentação gráfica da tabela da gestão de discos foi melhorada. (#10048)
+- As etiquetas para os controlos passam a desactivadas (em cinzento) quando o controlo está desactivado. (#11809)
+- Actualizada a lista de emoji CLDR para a versão 38. (#11817)
+- A opção nativa "Realce do foco" foi renomeada para "Realces visuais". (#11700)
+
+
+== Correcção de erros ==
+- O NVDA volta a trabalhar correctamente em campos de edição quando se usa a aplicação Fast Log Entry. (#8996)
+- Anúncio do tempo decorrido no Foobar2000 se o tempo total não estiver disponível (como numa emissão ao vivo). (#11337)
+- O NVDA passa a respeitar o atributo aria-roledescription em elementos em conteúdo editável em páginas web. (#11607)
+- Já não é anunciado "lista" em cada linha duma  lista no Google Docs ou outro conteúdo editável no Google Chrome. (#7562)
+- Ao navegar por caracter ou palavra, de um item de lista para outro, em conteúdo editável na web, a entrada no novo item de lista passa a ser anunciada. (#11569)
+- O NVDA já lê a linha correcta quando o cursor de inserção é colocado no fim de um  link no fim de um item de lista no Google Docs ou em outro conteúdo editável na web. (#11606)
+- No Windows 7, ao abrir ou fechar o Menu Iniciar a partir do ambiente de trabalho, o foco já é o correcto. (#10567)
+- Quando "Tentar cancelar a voz para eventos de foco expirados" está activado, o título dos separadores é novamente anunciado ao mudar de separadores no Firefox. (#11397)
+- O NVDA já não falha ao anunciar um item de lista, depois de digitar a primeira letra numa lista usando as vozes SAPI5 Ivona. (#11651)
+- Quando se usa as vozes SAPI5 da Ivona, harposoftware.com, o NVDA já pode guardar as configurações, mudar de sintetizador e já não ficará mudo ao reiniciar. (#11650)
+- É novamente possível usar o modo de navegação para ler e-mails no Correio do Windows 10 versão 16005.13110 ou superior. (#11439)
+- Já é possível escrever o número 6 em Braille de computador com o teclado Braille de uma linha HIMS. (#11710)
+- Grandes melhorias na performance no Azure Data Studio. (#11533, #11715)
+- Mesmo com a opção "Tentar cancelar a voz para eventos de foco expirados" activada, o título da janela Localizar do NVDA é novamente anunciado. (#11632)
+- O NVDA já não deve pausar quando, ao acordar o computador, o foco ficar num documento do Microsoft Edge. (#11576)
+- Já não é necessário pressionar "tab" ou mover o foco após fechar um menu de contexto no Microsoft Edge, para que o modo de navegação fique novamente funcional. (#11202)
+- O NVDA volta a ler os itens numa vista de lista numa aplicação de 64-bit como o Tortoise SVN. (#8175)
+- ARIA treegrids são tratadas como tabelas normais em modo de navegação no Firefox e Chrome. (#9715)
+- Uma pesquisa do termo anterior pode ser iniciada com o comando "Localizar anterior via NVDA+shift+F3 (#11770)
+- Um comando do NVDA já não é assumido como sendo repetido, se qualquer outra tecla for pressionada no meio dos dois comandos. (#11388) 
+- as etiquetas de Realçado e enfatizado no Internet Explorer podem ser novamente marcadas para não serem anunciadas, desmarcando a opção "Enfatisado" na secção Formatação de documentos das configurações do NVDA. (#11808)
+- Uma pausa de vários segundos, que ocorria a vários utilizadores, ao percorrerem as células do Excel, usando as setas, já não deverá ocorrer. (#11818)
+- No Microsoft Teams, versões 1.3.00.28xxx, o NVDA já lê as mensagens nas conversações ou canais do Teams, o que não acontecia devido a um menu incorrectamente focado. (#11821)
+- Texto marcado como erro ortográfico e de gramática, em simultâneo, no Google Chrome será correctamente anunciado pelo NVDA como tendo ambos os tipos de erro. (#11787)
+- Quando se usa o Outlook em francês, o atalho para "Responder a todos"' (control+shift+R) volta a funcionar. (#11196)
+- No Visual Studio, as dicas IntelliSense, que proporcionam detalhes adicionais sobre o item seleccionado do IntelliSense, já só são anunciadas uma vez. (#11611)
+- Na Calculadora do Windows 10 , o NVDA não anuncia o progresso dos cálculos se a opção "Anunciar caracteres escritos" estiver desactivada. (#9428)
+- O NVDA já não cracha ao usar a tabela Braille Inglês US grau 2 e a opção "Expandir para Braille de computador palavras sob o cursor" está activada e está a ser mostrado um URL. (#11754)
+- É novamente possível anunciar a informação de formatação para a célula em foco do Excel, com NVDA+F. (#11914)
+
+
+== Alterações para Desenvolvedores ==
+- System tests can now send keys using spy.emulateKeyPress, which takes a key identifier that conforms to NVDA's own key names, and by default also blocks until the action is executed. (#11581)
+- NVDA no longer requires the current directory to be the NVDA application directory in order to function. (#6491)
+- The aria live politeness setting for live regions can now be found on NVDA Objects using the liveRegionPoliteness property. (#11596)
+- It is now possible to define separate gestures for Outlook and Word document. (#11196)
+
+
+= 2020.3 =
+Os destaques desta versão incluem:
+- Várias melhorias significativas na estabilidade e no desempenho, particularmente em aplicações do Microsoft Office;
+- Novas configurações para alternar o suporte à interacção táctil e anúncio de gráficos;
+- A existência de conteúdo marcado (realçado) pode ser anunciada nos navegadores;
+- Novas tabelas braille alemãs.
+
+== Novas Funcionalidades ==
+- Já é possível alternar o anúncio de gráficos na secção Formatação de documentos das configurações do NVDA. Note que a desactivação desta opção ainda permite a leitura dos textos alternativos dos gráficos. (# 4837)
+- Já é possível alternar a interacção táctil do NVDA. Foi adicionada uma opção à respectiva secção das configurações do NVDA. O comando padrão é NVDA + control + alt + t. (# 9682)
+- Adicionadas novas tabelas braille alemãs. (# 11268)
+- O NVDA passa a detectar controlos UIA de texto apenas de leitura. (# 10494)
+- A existência de conteúdo marcado (realçado) é anunciada em voz e Braille em todos os navegadores Web. (# 11436)
+ - Isto pode ser activado e desactivado por uma nova opção, "Conteúdo marcado", em "Formatação de documentos" das configurações do NVDA.
+- Já é possível adicionar novas teclas à Simulação de teclas do sistema, a partir da opção "Definir comandos". (# 6060)
+  - Para isso, pressione o botão adicionar depois de selecionar a categoria "Simulação de teclas do sistema".
+- A HandyTech Active Braille com joystick já é suportada. (# 11655)
+- A opção "Modo de foco automático para movimentos do cursor" passa a ser compatível com a desactivação de "Definir automaticamente o foco do sistema para os elementos focáveis".". (# 11663)
+
+== Alterações ==
+- A função "Anuncia as informações de formatação do texto sob o cursor de inserção" (NVDA+f) foi alterada para "Anunciar formatação do texto sob o cursor de inserção" em vez de para a posição actual do cursor de revisão. Para a função "Anuncia as informações de formatação da posição actual do cursor de revisão" use NVDA+shift+f. (#9505)
+- O NVDA já não define, automaticamente, o foco do sistema para os elementos focáveis, por padrão, em modo de navegação, melhorando a performance e a estabilidade. (#11190)
+- O CLDR foi actualizado da versão 36.1 para a versão 37. (#11303)
+- Actualizado o eSpeak-NG para a versão 1.51-dev, commit 1fb68ffffea4
+- Já é possível utilizar a navegação de tabelas em caixas de listas com elementos marcáveis da lista quando a lista tiver várias colunas. (#8857)
+- No Gestor de extras, ao ser solicitada a confirmação da remoção de um extra, o botão "Não" passa a ser o predefinido. (#10015)
+- No Microsoft Excel, a Lista de Elementos passa a apresentar as fórmulas na forma localizada. (#9144)
+- O NVDA já usa a terminologia correcta para as notas no Excel. (#11311)
+- Ao usar o comando "mover cursor de revisão para o foco" no modo de navegação, o cursor de revisão passa a ser posicionado na posição do cursor virtual. (#9622)
+- A informação reportada em modo de navegação, como as informações de formatação (NVDA+F), passam a ser mostradas numa janela maior e centrada. (#9910)
+
+
+== Correcção de erros ==
+- O NVDA já anuncia sempre o símbolo, ao navegar por palavra e ao chegar a um símbolo isolado seguido por um espaço, independentemente do nível de pontuação. (#5133)
+- Nas aplicações que usam QT 5.11 ou mais recente, a descrição dos objectos volta a ser anunciada. (#8604)
+- Ao apagar uma palavra com Control+delete, o NVDA já não fica silencioso. (#3298, #11029)
+  - Agora é anunciada a palavra à direita da que foi apagada.
+- Na secção "Geral" das configurações do NVDA, a lista dos idiomas já é ordenada correctamente. (#10348)
+- No diálogo "Definir comandos", foi bastante melhorada a performance durante a filtragem. (#10307)
+- Já pode enviar caracteres Unicode com código superior a U+FFFF a partir da linha Braille. (#10796)
+- No Windows 10, actualização de Maio de 2020, o NVDA já anuncia o conteúdo do diálogo "Abrir com". (#11335)
+- Uma nova opção, experimental, na secção Avançadas das configurações do NVDA permite activar o registo selectivo para eventos e mudanças nas propriedades UI Automation o que pode provocar melhorias na performance no Microsoft Visual Studio e outras aplicações baseadas em UIAutomation. (#11077, #11209)
+- Para os itens de lista marcáveis o estado Seleccionado já não é anunciado em duplicado e, se aplicável, o estado Não seleccionado é anunciado. (#8554)
+- No Windows 10, actualização de Maio de 2020, o NVDA agora anuncia Mapeador de som da Microsoft ao mostrar os dispositivos de saída no diálogo de selecção do sintezizador. (#11349)
+- No Internet Explorer, a numeração passa a ser anunciada correctamente em listas ordenadas mesmo que a lista não comece em 1. (#8438)
+- No Google chrome, o NVDA já anuncia "não marcado", em todos os controlos marcáveis (não apenas caixas de verificação), que estejam actualmente não marcados. (#11377)
+- Já é novamente possível navegar nos vários controlos quando o idioma do NVDA está definido para Aragonês. (#11384)
+- O NVDA já não deve parar no Microsoft Word ao se deslocar, rapidamente, com as setas para cima ou para baixo, ou ao escrever com uma linha Braille ligada. (#11431, #11425, #11414)
+- O NVDA já não adiciona um espaço inexistente ao copiar o objecto de navegação actual para a área de transferência. (#11438)
+- O NVDA já não activa o perfil de leitura contínua quando não há texto para ser lido. (#10899, #9947)
+- O NVDA já consegue ler a lista de funcionalidades no Internet Information Services (IIS) Manager. (#11468)
+- O NVDA agora mantém o dispositivo áudio aberto para melhorar a performance em algumas placas de som. (#5172, #10721)
+- O NVDA já não pára nem é finalizado quando se pressiona control+shift+downArrow no Microsoft Word. (#9463)
+- O estado Expandido/Recolhido dos directórios na estrutura hierárquica de navegação em drive.google.com é sempre anunciado pelo NVDA. (#11520)
+- O NVDA detectará automaticamente a linha Braille NLS eReader Humanware, ligada via Bluetooth, já que o seu identificador Bluethooth é "NLS eReader Humanware". (#11561)
+- Grande melhoria de desempenho no Visual Studio Code. (# 11533)
+
+
+== Alterações para desenvolvedores ==
+- The GUI Helper's BoxSizerHelper.addDialogDismissButtons supports a new "separated" keyword argument, for adding a standard horizontal separator to dialogs (other than messages and single input dialogs). (#6468)
+- Additional properties were added to app modules, including path for the executable (appPath), is a Windows Store app (isWindowsStoreApp), and machine architecture for the app (appArchitecture). (#7894)
+- It is now possible to create app modules for apps hosted inside wwahost.exe on Windows 8 and later. (#4569)
+- A fragment of the log can now be delimited and then copied to clipboard using NVDA+control+shift+F1. (#9280)
+- NVDA-specific objects that are found by Python's cyclic garbage collector are now logged when being deleted by the collector to aide in removing reference cycles from NVDA. (#11499)
+ - The majority of NVDA's classes are tracked including NVDAObjects, appModules, GlobalPlugins, SynthDrivers, and TreeInterceptors.
+ - A class that needs to be tracked should inherit from garbageHandler.TrackedObject.
+- Significant debug logging for MSAA events can be now enabled in NVDA's Advanced settings. (#11521)
+- MSAA winEvents for the currently focused object are no longer filtered out along with other events if the event count for a given thread is exceeded. (#11520)
+
+
+= 2020.2 =
+- Suporte para uma nova linha Braille da Nattiq;
+- Melhor suporte para a GUI do ESET antivírus e do Windows Terminal;
+- Melhoras no desempenho com 1Password e o sintetizador Windows OneCore;
+- Muitas outras correções e melhorias importantes.
+
+== Novas funcionalidades ==
+- Suporte para a nova linha Braille Nattiq nBraille (# 10778)
+- Adicionada função para abrir o diretório de configurações do NVDA sem comando definido. (# 2214)
+- Melhor suporte para a GUI do ESET antivírus. (# 10894)
+- Adicionado suporte para Windows Terminal. (# 10305)
+- Adicionado um comando para anunciar o perfil de configurações activo sem comando definido. (# 9325)
+- Adicionado um comando para alternar o anúncio de subscrito e sobrescrito sem comando definido. (# 10985)
+- As aplicações Web (como o GMail) já não anunciam informações desatualizadas ao mover o foco rapidamente. (# 10885)
+  - Esta correção experimental deve ser activada manualmente através da opção "Tentar cancelar a voz para eventos de foco expirados" na secção Avançadas das configurações do NVDA.
+- Adicionados mais símbolos ao dicionário. (# 11105)
+
+
+== Alterações ==
+- Actualizado o conversor Braille Liblouis da versão de 3.12.0) para a [3.14.0 https://github.com/liblouis/liblouis/releases/tag/v3.14.0]. (# 10832, # 11221)
+- O anúncio de subscrito e sobrescrito passa a ser controlado separadamente dos atributos da fonte. (# 10919)
+- Devido às alterações feitas no VS Code, o NVDA já não desactiva, por padrão, o modo de navegação no Código. (# 10888)
+- O NVDA já não anuncia "topo" e "fundo" ao mover o cursor de revisão directamente para a primeira ou última linha do objeto de navegação actual. (# 9551)
+- O NVDA já não anuncia "esquerda" e "direita" ao mover o cursor de revisão directamente para o primeiro ou último caractere da linha do objeto de navegação actual. (# 9551)
+
+
+== Correcção de erros ==
+- O NVDA já inicia correctamente mesmo quando o ficheiro de registo não pode ser criado. (# 6330)
+- Nas versões recentes do Microsoft Word 365, o NVDA não anuncia mais "excluir palavra inversa" quando pressionar Control + Backspace ao editar um documento. (# 10851)
+- No Winamp, o NVDA volta a anunciar o estado de alternância de reprodução aleatória e repetição. (# 10945)
+- O NVDA já não é extremamente lento ao mover-se pela lista de itens do 1Password. (# 10508)
+- O sintetizador Windows OneCore já não faz pausas entre as expressões. (# 10721)
+- O NVDA já não congela quando se abre o menu de contexto do 1Password na área de notificações do sistema. (# 11017)
+- Para o Office 2013 e versões anteriores:
+  - Os frisos são anunciados quando são focados pela primeira vez. (# 4207)
+  - Os itens do menu de contexto são novamente anunciados correctamente. (# 9252)
+  - As secções dos frisos são anunciadas de forma consistente ao navegar com Control mais setas. (# 7067)
+- Os sons de erro do NVDA já não são ouvidos ao aceder os controlos de texto do DevExpress. (# 10918)
+- As sugestões dos ícones na área de notificações já não são anunciadas, ao navegar com o teclado, se o seu texto for igual ao nome dos ícones, para evitar um duplo anúncio. (# 6656)
+- Em Modo de navegação, no Mozilla Firefox e Google Chrome, o texto já não aparece, incorretamente, numa linha separada, quando o conteúdo da web usa o esquema CSS: inline-flex. (# 11075)
+- Em Modo de navegação, com a opção "Definir automaticamente o foco do sistema para os elementos focáveis" desactivada, já é possível activar elementos que não são focáveis.
+- Em Modo de navegação, com a opção "Definir automaticamente o foco do sistema para os elementos focáveis" desactivada, já é possível activar os elementos alcançados pressionando Tab. (# 8528)
+- Em Modo de navegação, com a opção "Definir automaticamente o foco do sistema para os elementos focáveis" desactivada, a activação de certos elementos já não activa um controlo incorreto. (# 9886)
+- Em Modo de navegação, com a opção "Definir automaticamente o foco do sistema para os elementos focáveis" desactivada, alternar para o modo de foco, com NVDA+espaço,  já foca o elemento sob o cursor. (# 11206)
+- É novamente possível verificar atualizações do NVDA em certos sistemas; por exemplo. instalações limpas do Windows. (# 11253)
+- Numa aplicação Java, o foco não é alterado quando a seleção é alterada numa estrutura hierárquica, tabela ou lista não focada. (# 5989)
+
+
+== Changes For Developers ==
+- execElevated and hasUiAccess have moved from config module to systemUtils module. Usage via config module is deprecated. (#10493)
+- Updated configobj to 5.1.0dev commit f9a265c4. (#10939)
+- Automated testing of NVDA with Chrome and a HTML sample is now possible. (#10553)
+- IAccessibleHandler has been converted into a package, OrderedWinEventLimiter has been extracted to a module and unit tests added (#10934)
+- Updated BrlApi to version 0.8 (BRLTTY 6.1). (#11065)
+- Status bar retrieval may now be customized by an AppModule. (#2125, #4640)
+- NVDA no longer listens for IAccessible EVENT_OBJECT_REORDER. (#11076)
+- A broken ScriptableObject (such as a GlobalPlugin missing a call to its base class' __init__ method) no longer breaks NVDA's script handling. (#5446)
+
+
+= 2020.1 =
+Os destaques desta versão incluem:
+- Suporte para várias novas linhas Braille da HumanWare e APH;
+- Várias outras importantes correções de bugs, como a capacidade de ler novamente matemática no Microsoft Word usando o MathPlayer / MathType.
+-
+
+== Novas funcionalidades ==
+- O item, actualmente seleccionado, numa caixa de lista, é novamente apresentado no modo de navegação, no Chrome, tal como era até ao NVDA 2019.1. (#10713)
+- Já pode executar o clique direito do rato  num ecrã táctil, tocando com um dedo e mantendo. (#3886)
+- Suporte para as novas linhas Braille: APH Chameleon 20, APH Mantis Q40, HumanWare BrailleOne, BrailleNote Touch v2, e NLS eReader. (#10830)
+-
+
+== Alterações ==
+- O NVDA impede o sistema de hibernar ou fechar durante a leitura contínua. (#10643)
+- Suporte para "out-of-process iframes" no Mozilla Firefox. (#10707)
+- actualização do conversor Braille liblouis para a versão 3.12 (#10161)
+-
+
+== Correcção de erros ==
+- Corrigido o não anúncio do símbolo "Unicode minus" (U+2212). (#10633)
+- Ao instalar extras pelo Gestor de extras, os nomes dos ficheiros e pastas no diálogo de pesquisa já não são anunciados em duplicado. (#10620, #2395)
+- No Firefox, quando se carrega Mastodon com a interface web avançada activada, todas as linhas de tempo já são renderizadas corretamente em modo de navegação. (#10776)
+- Em modo de navegação, o NVDA já anuncia "Não marcado" nas caixas de verificação em que antigamente não anunciava. (#10781)
+- Os controlos "ARIA switch" já não anunciam informações confusas, como "Não pressionado Marcado" ou "Pressionado marcado". (#9187)
+- As vozes SAPI4 já devem conseguir falar certos textos. (#10792)
+- O NVDA volta a poder ler e interagir com equações matemáticas no Microsoft Word. (#10803)
+- O NVDA volta a anunciar, em modo de navegação, quando o texto que se está a seleccionar é desseleccionado pelo movimento das setas. (#10731).
+- O NVDA já não se fecha se existirem erros ao iniciar o eSpeak. (#10607)
+- Erros causados pela codificação unicode na traduçãodos atalhos, já não fecham o instalador, mitigado por usar a predefinição do texto em inglês. (#5166, #6326)
+- Ao navegar com as setas para fora de listas e tabelas, no modo de leitura contínua com a navegação rápida activada já não é continuamente anunciado o fim de listas e tabelas. (#10706)
+-
+
+== Changes for Developers ==
+- Developer documentation is now build using sphinx. (#9840)
+- Several speech functions have been split into two. (#10593)
+  The speakX version remains, but now depends on a getXSpeech function which returns a speech sequence.
+  - speakObjectProperties now relies on getObjectPropertiesSpeech
+  - speakObject now relies on getObjectSpeech
+  - speakTextInfo now relies on getTextInfoSpeech
+  - speakWithoutPauses has been converted into a class, and refactored, but should not break compatibility.
+  - getSpeechForSpelling is deprecated (though still available) use getSpellingSpeech instead.
+  Private changes that should not affect addon developers:
+  - _speakPlaceholderIfEmpty is now _getPlaceholderSpeechIfTextEmpty
+  - _speakTextInfo_addMath is now _extendSpeechSequence_addMathForTextInfo
+- Speech 'reason' has been converted to an Enum, see controlTypes.OutputReason class. (#10703)
+  - Module level 'REASON_*' constants are deprecated.
+- Compiling NVDA dependencies now requires Visual Studio 2019 (16.2 or newer). (#10169)
+- Updated SCons to version 3.1.1. (#10169)
+- Again allow behaviors._FakeTableCell to have no location defined (#10864)
+
+
+= 2019.3 =
+O NVDA 2019.3 é uma versão muito significativa que contém muitas alterações ocultas, incluindo a actualização do Python 2 para o Python 3 e uma importante reescrita do subsistema de fala do NVDA.
+Embora essas alterações quebrem a compatibilidade com os extras mais antigos do NVDA, a actualização para o Python 3 é necessária para a segurança, e as alterações no sistema de a fala permitem algumas inovações interessantes num futuro próximo.
+Outros destaques desta versão são:
+Suporte a 64 bits para Java VMs;
+Funcionalidades de Cortina de ecrã e Realçar foco;
+Suporte para mais linhas Braille;
+Novo visualizador em Braille;
+Muitas outras correções.
+
+== Novas Funcionalidades ==
+- A precisão do comando "Mover o rato para o objecto de navegação" foi melhorada em campos de texto em aplicações Java. (#10157)
+- Adicionado suporte para as seguintes linhas Braille da HandyTech (#8955):
+ - Basic Braille Plus 40
+ - Basic Braille Plus 32
+ - Connect Braille
+- Todos os comandos definidos pelo utilizador podem ser removidos através da nova opção "Restaurar para o padrão original" na janela "Definir comandos". (#10293)
+- O anúncio do tipo de letra no Microsoft Word agora inclui a marcação como texto oculto. (#8713)
+- Adicionado um comando para mover o cursor de revisão para a posição marcada como início do bloco: NVDA+shift+F9. (#1969)
+- No Internet Explorer, Microsoft Edge e versões recentes do Firefox e Chrome, as marcas passam a ser anunciadas no modo de foco e navegação por objectos. (#10101)
+- No Internet Explorer, Google Chrome e Mozilla Firefox, já pode navegar por artigo e por agrupamento com as teclas de navegação rápida. É necessário atribuir essas teclas na janela "Definir comandos" aberta a partir de um documento em modo de navegação. (#9485, #9227)
+ - As figuras também passam a ser anunciadas. São consideradas objectos e portanto navegáveis com a tecla rápida "o".
+- No Internet Explorer, Google Chrome e Mozilla Firefox, os artigos passam a ser anunciados na navegação por objectos, e opcionalmente, em modo de navegação se activados na secção Formatação de Documentos. (#10424)
+- Adicionada a funcionalidade "Cortina de ecrã" que, quando activada torna o ecrã totalmente preto no Windows 8 e superiores (#7857):
+ - Adicionada uma função para activar a cortina até o NVDA ser reiniciado, pressionando uma vez, ou activar sempre que o NVDA esteja em execução. É necessário atribuir uma tecla de atalho na janela "Definir comandos", secção "Visão";
+ - Pode ser activada e configurada na secção "Visão" das configurações do NVDA.
+- Adicionada a funcionalidade "Realçar foco" (#971, #9064):
+ - O realce do foco do sistema, do objecto de navegação, e do cursor em modo de navegação podem ser activados e configurados na secção "Visão" das configurações do NVDA;
+ - Nota: Esta funcionalidade é incompatível com o extra focus highlight, mas o extra pode ser usado se a função nativa "Realçar foco" estiver desactivada.
+- Adicionada a ferramenta Visualizador Braille, que permite a visualização da saída Braille através de uma janela no ecrã. (# 7788)
+
+== Alterações ==
+- O Guia do utilizador já ensina a usar o NVDA na consola Windows. (#9957)
+- Executar o nvda.exe desliga uma cópia em execução e activa uma nova cópia. O parâmetro -r|--replace da linha de comando ainda é aceite, mas é ignorado. (#8320)
+- No Windows 8 e posteriores o NVDA passa a anunciar a informação do nome e versão dos programas "hosted", tais como os descarregados da loja Microsoft, usando a informação fornecida pelo programa. (#4259, #10108)
+- Ao alternar o acompanhamento, ou não, das alterações no Microsoft Word, através do teclado, o NVDA anunciará o estado da configuração. (#942) 
+- A identificação da versão do NVDA é agora colocada no início do ficheiro de registo. Isto acontece mesmo com o registo desactivado nas configurações do NVDA. (#9803)
+- A janela de configurações do NVDA já não permite alterar o nível de registo se este foi definido pelo parâmetro da linha de comandos. (#10209)
+- No Microsoft Word, o NVDA passa a anunciar o estado de mostrar, ou não, os caracteres não imprimíveis, quando se usa o comando Ctrl+Shift+8. (#10241)
+- Actualizado o conversor Braille Liblouis para o commit 58d67e63. (#10094)
+- Quando o anúncio dos caracters CLDR, (incluindo emojis) está activado, eles serão anunciados em qualquer nível de pontuação. (#8826)
+- Pacotes Python de terceiros incluíddos no NVDA, tais como comtypes, passam a registar os seus avisos e erros no registo do NVDA. (#10393)
+- Actualizado o Unicode Common Locale Data Repository emoji annotations para a versão 36.0. (#10426)
+- Quando se foca um agrupamento em modo de navegação, a descrição é anunciada (#10095)
+- O Java Access Bridge passa a ser incluido com o NVDA para activar o acesso a aplicações Java, incluindo para 64 bit Java VMs. (#7724)
+- Se o Java Access Bridge não estiver activado para o utilizador, o NVDA, automaticamente, activa-o no arranque. (#7952)
+- Actualizado o sintetizador eSpeak-NG para a versão 1.51-dev, commit ca65812ac6019926f2fbd7f12c92d7edd3701e0c. (#10581)
+
+
+== Correcções ==
+- Os Emojis e outros caracteres unicode 32 bit ocuparão menos espaço na linha Braille quando representados pelo seu código hexadecimal. (#6695)
+- No Windows 10, o NVDA anuncia as sugestões das aplicações da plataforma universal (UWP) se o NVDA estiver configurado para as anunciar na secção "Apresentação de objectos" das configurações. (#8118)
+- No Windows 10, actualização Anniversary e seguintes, o texto escrito no Mintty já é anunciado. (#1348)
+- No Windows 10, actualização Anniversary e seguintes, na Consola Windows, os resultados mostrados perto do cursor já não são soletrados. (#513)
+- Os controlos na janela do compressor do  Audacity já são anunciados ao navegar pela janela. (#10103)
+- O NVDA já não considera os espaços como palavras na revisão de objectos em editores de texto baseados em  Scintilla, como o Notepad++. (#8295)
+- O NVDA impedirá o sistema de hibernar enquanto se estiver a deslocar pelo texto com a linha Braille. (#9175)
+- No Windows 10, o Braille já segue o cursor ao editar o conteúdo de uma célula no Microsoft Excel e noutros controlos de texto UIA, onde respondia com atraso. (#9749)
+- O NVDA volta a anunciar as sugestões na barra de endereço do Microsoft Edge. (#7554)
+- O NVDA já não fica silencioso ao focar um "HTML tab control header" no Internet Explorer. (#8898)
+- No Microsoft Edge baseado em EdgeHTML, o NVDA já não reproduz o som de pesquisa quando a janela é maximizada. (#9110, #10002)
+- As caixas combinadas de ARIA 1.1 já são suportadas no Mozilla Firefox e Google Chrome. (#9616)
+- O NVDA já não anuncia o conteúdo de colunas ocultas para itens de listas em controlos SysListView32. (#8268)
+- A janela de configurações do NVDA, secção "Gerais", já não mostra informações  sobre o nível de registo quando é executado em ambientes seguros. (#10209)
+- No menu Iniciar do Windows 10, actualização Anniversary e seguintes, o NVDA passa a anunciar os detalhes dos resultados da pesquisa. (#10232)
+- No modo de navegação, se quer o movimento com as setas, quer com as teclas de navegação rápida, o documento for alterado, o NVDA, em certos casos,  já não falará incorrectamente o conteúdo. (#8831, #10343)
+- Os nomes de algumas marcas (bullets) no Microsoft Word foram corrigidos. (#10399)
+- No Windows 10, actualização de Maio 2019 e seguintes, o NVDA volta a anunciar o primeiro Emoji ou item da área de transferência, quando o painel de emojis ou o histórico da área de transferência são abertos. (#9204)
+- No Poedit, é outra vez possível ver algumas traduções para idiomas com escrita da direita para a esquerda. (#9931)
+- Na aplicação  Definições do Windows 10, actualização de Abril 2018 e seguintes, o NVDA já não anuncia informação sobre a barra de progresso para o volume encontradas na secção Sistema/Som. (#10284)
+- Expressões regulares inválidas nos dicionários de voz já não provocam a paragem total da voz no NVDA. (#10334)
+- Ao ler itens de listas com marcas (bullets) no Microsoft Word com a UIA activada, a marca do próximo item já não é anunciada. (#9613)
+- Alguns casos raros de erros ou problemas de conversão Braille com o  liblouis foram resolvidos. (#9982)
+- As aplicações Java iniciadas antes do NVDA já são acessíveis sem ser necessário reiniciá-las. (#10296)
+- No Mozilla Firefox, quando o elemento em foco fica marcado como current (aria-current), esta alteração já não é anunciada várias vezes. (#8960)
+- O NVDA passa a tratar alguns caracteres unicode compostos, tais como e-acute como um caracter simples ao mover-se pelo texto. (#10550)
+- Spring Tool Suite Version 4 já é suportada. (#10001)
+- Não anunciar em duplicado o nome quando aria-labelledby relation target é um elemento interior. (#10552)
+- No Windows 10 versão 1607 e seguintes, caracteres digitados num teclado Braille passam a ser anunciados em mais situações. (#10569)
+- Ao mudar de dispositivo de saída de áudio, os sons reproduzidos pelo NVDA passam a usar o novo dispositivo seleccionado. (#2167)
+- No Mozilla Firefox, mover o foco em modo de navegação é mais rápido. Isto faz com que movimentar o cursor virtual tenha, na maior parte dos casos, uma resposta mais rápida. (#10584) 
+
+== Alterações para desenvolvedores ==
+- Atualização do Python para  a versão 3.7. (#7105)
+- Atualização do pySerial para a versão 3.4. (#8815)
+- Atualização do wxPython para a versão 4.0.3 para dar suporte ao Python 3.5 e seguintes. (#9630)
+- Atualização do six para a versão 1.12.0. (#9630)
+- Atualização do py2exe para a versão 0.9.3.2 (em desenvolvimento, commit b372a8e de albertosottile/py2exe#13). (#9856)
+- Atualização do UIAutomationCore.dll, módulo comtypes, para a versão 10.0.18362. (#9829)
+- The tab-completion in the Python console only suggests attributes starting with an underscore if the underscore is first typed. (#9918)
+- Flake8 linting tool has been integrated with SCons reflecting code requirements for Pull Requests. (#5918)
+- As NVDA no longer depends on pyWin32, modules such as win32api and win32con are no longer available to add-ons. (#9639)
+ - win32api calls can be replaced with direct calls to win32 dll functions via ctypes.
+ - win32con constants should be defined in your files.
+- The "async" argument in nvwave.playWaveFile has been renamed to "asynchronous". (#8607)
+- speakText and speakCharacter methods on synthDriver objects are no longer supported.
+ - This functionality is handled by SynthDriver.speak.
+- SynthSetting classes in synthDriverHandler have been removed. Now use driverHandler.DriverSetting classes instead.
+- SynthDriver classes should no longer expose index via the lastIndex property.
+ - Instead, they should notify the synthDriverHandler.synthIndexReached action with the index, once all previous audio has finished playing before that index.
+- SynthDriver classes must now notify the synthDriverHandler.synthDoneSpeaking action, once all audio from a SynthDriver.speak call has completed playing.
+- SynthDriver classes must support the speech.PitchCommand in their speak method, as changes in pitch for speak spelling now depends on this functionality.
+- The speech function getSpeechTextForProperties has been renamed to getPropertiesSpeech. (#10098)
+- The braille function getBrailleTextForProperties has been renamed to getPropertiesBraille. (#10469)
+- Several speech functions have been changed to return speech sequences. (#10098)
+ - getControlFieldSpeech
+ - getFormatFieldSpeech
+ - getSpeechTextForProperties now called getPropertiesSpeech
+ - getIndentationSpeech
+ - getTableInfoSpeech
+- Added a textUtils module to simplify string differences between Python 3 strings and Windows unicode strings. (#9545)
+ - See the module documentation and textInfos.offsets module for example implementations.
+- Deprecated functionality now removed. (#9548)
+ - AppModules removed:
+  - Windows XP sound recorder.
+  - Klango Player, which is abandoned software.
+ - configobj.validate wrapper removed.
+  - New code should use from configobj import validate instead of import validate
+ - textInfos.Point and textInfos.Rect replaced by locationHelper.Point and locationHelper.RectLTRB respectively.
+ - braille.BrailleHandler._get_tether and braille.BrailleHandler.set_tether have been removed.
+ - config.getConfigDirs has been removed.
+ - config.ConfigManager.getConfigValidationParameter has been replaced by getConfigValidation
+ - inputCore.InputGesture.logIdentifier property has been removed.
+   - Use _get_identifiers in inputCore.InputGesture instead.
+ - synthDriverHandler.SynthDriver.speakText/speakCharacter have been removed.
+ - Removed several synthDriverHandler.SynthSetting classes.
+   - Previously kept for backwards compatibility (#8214), now considered obsolete.
+   - Drivers that used the SynthSetting classes should be updated to use the DriverSetting classes.
+ - Some legacy code has been removed, particularly:
+  - Support for the Outlook pre 2003 message list.
+  - An overlay class for the classic start menu, only found in Windows Vista and earlier.
+  - Dropped support for Skype 7, as it is definitely not working any more.
+- Added a framework to create vision enhancement providers; modules that can change screen contents, optionally based on input from NVDA about object locations. (#9064)
+ - Add-ons can bundle their own providers in a visionEnhancementProviders folder.
+ - See the vision and visionEnhancementProviders modules for the implementation of the framework and examples, respectively.
+ - Vision enhancement providers are enabled and configured via the 'vision' category in NVDA's settings dialog.
+- Abstract class properties are now supported on objects that inherit from baseObject.AutoPropertyObject (e.g. NVDAObjects and TextInfos). (#10102)
+- Introduced displayModel.UNIT_DISPLAYCHUNK as a textInfos unit constant specific to DisplayModelTextInfo. (#10165)
+ - This new constant allows walking over the text in a DisplayModelTextInfo in a way that more closely resembles how the text chunks are saved in the underlying model.
+- displayModel.getCaretRect now returns an instance of locationHelper.RectLTRB. (#10233)
+- The UNIT_CONTROLFIELD and UNIT_FORMATFIELD constants have been moved from virtualBuffers.VirtualBufferTextInfo to the textInfos package. (#10396)
+- For every entry in the NVDA log, information about the originating thread is now included. (#10259)
+- UIA TextInfo objects can now be moved/expanded by the page, story and formatField text units. (#10396)
+- External modules (appModules and globalPlugins) are now less likely to be able to break the creation of NVDAObjects. 
+ - Exceptions caused by the "chooseNVDAObjectOverlayClasses" and "event_NVDAObject_init" methods are now properly caught and logged.
+- The aria.htmlNodeNameToAriaLandmarkRoles dictionary has been renamed to aria.htmlNodeNameToAriaRoles. It now also contains roles that aren't landmarks.
+- scriptHandler.isCurrentScript has been removed due to lack of use. There is no replacement. (#8677)
+
+
+= 2019.2.1 =
+Esta é uma sub-versão para corrigir vários craches presentes na 2019.2. As correcções incluem:
+- Corrigidos vários craches no GMail observados quer no Mozilla Firefox quer no  Google Chrome ao interagir com alguns menus popup, tais como ao criar filtros ou ao alterar algumas opções do GMail. (#10175, #9402, #8924)
+- No Windows 7, o NVDA já não causa craches no Windows Explorer quando o rato é usado no menu Iniciar. (#9435) 
+- O Windows Explorer no Windows 7 já não cracha ao aceder aos campos de edição de metadata. (#5337) 
+- O NVDA já não "congela" ao interagir com imagens com URI base64 no Mozilla Firefox ou Google Chrome. (#10227)
+
+
+= 2019.2 =
+Os destaques desta versão incluem:
+- Ddetecção automática das linhas Braille da Freedom Scientific;
+- Uma opção experimental na secção Avançadas das configurações do NVDA para impedir que o modo de navegação mova o foco automaticamente (o que pode trazer melhorias de desempenho);
+- Uma opção de "Aumento de velocidade" para o sintetizador Windows OneCore Voices para que se possa utilizar velocidades muito rápidas;
+- Muitas outras correções de bugs.
+
+== Novas Funcionalidades ==
+- O suporte ao NVDA do Miranda NG já funciona com as novas versões clientes. (#9053) 
+- Já pode desactivar o modo de navegação por padrão, desactivando a nova opção "Activar o modo de navegação no carregamento de páginas" nas configurações do modo de navegação do NVDA. (#8716) 
+ - Note que mesmo com esta opção desactivada pode activar o modo de navegação, manualmente, pressionando NVDA+barra de espaços.
+- Já pode filtrar símbolos no diálogo "Pronúncia de pontuação/símbolo", tal como faz no diálogo "Lista de elementos" ou "Definir comandos". (#5761)
+- Foi adicionado um comando para alternar a quantidade de texto lida pelo rato, "Unidade de leitura de texto:", mas sem ter sido atribuido qualquer comando. (#9056)
+- Foi adicionada ao sintetizador windows OneCore a opção "Aumento de velocidade", o que permite velocidades bem mais rápidas. (#7498)
+- A opção "Aumento de velocidade", para os sintetizadores que a suportem, já pode ser configurada no anel de configurações do sintetizador. (actualmente eSpeak-NG e Windows OneCore voices). (#8934)
+- Os perfis de configurações já podem ser activados manualmente através de um comando. (#4209)
+ - O comando deve ser configurado no diálogo "Definir comandos".
+- No Eclipse, foi adicionado suporte para a autocompletação no editor de código. (#5667)
+ - Adicionalmente, a informação Javadoc pode ser lida no editor, se estiver presente, pressionando NVDA+d.
+- Adicionada uma opção experimental às configurações Avançadas que permite fazer com que o foco do sistema deixe de seguir o modo de  navegação  (Definir automaticamente o foco do sistema para os elementos focáveis.). (#2039)
+Embora possa não ser adequado desactivar em todas as páginas, pode resolver:
+ - Efeito elástico: o NVDA esporadicamente anula o último comando em modo de navegação e volta para a localização anterior;
+ - As caixas de edição ficam com o foco quando se passa por elas ao navegar com as setas;
+ - Lentidão na resposta aos comandos em modo de navegação.
+- Para os drivers das linhas Braille que o suportem, as configurações específicas do driver podem ser alteradas nas configurações de Braille do diálogo de configurações do NVDA. (#7452)
+- As linhas Braille da Freedom Scientific passam a ser suportadas pela detecção automática de linhas Braille. (#7727)
+- Adicionado um comando para mostrar o substituto para um símbolo sob o cursor de revisão. (#9286)
+- Adicionada uma opção experimental às configurações Avançadas que permite testar uma, ainda em progresso, versão reescrita do suporte do NVDA à consola do Windows, usando a API Microsoft UI Automation. (#9614)
+- Na consola de Python, o campo de edição já suporta a colagem de múltiplas linhas daÁrea de transferência. (#9776)
+
+
+== Alterações ==
+- O volume do sintetizador passa a ser alterado de 5 em 5% em vez de 10% quando se usa o anel de configurações do sintetizador. (#6754)
+- Clarificada a informação no Gestor de extras quando se inicia o NVDA com os extras desactivados. (#9473)
+- Actualizado o Unicode Common Locale Data Repository emoji annotations para a versão 35.0. (#9445)
+- Actualizado o liblouis braille translator para a versão 3.10.0. (#9439, #9678)
+- Actualizado o eSpeak-NG para a versão  commit 67324cc.
+- A tecla de atalho, em inglês, para o campo "Filtrar por:", no diálogo "Lista de elementos" foi alterada para alt+y. (#8728)
+- Quando uma linha Braille, ligada via Bluetooth, é detectada automaticamente, o NVDA continuará à procura por dispositivos suportados pelo mesmo driver, via USB, e alternará para uma ligação USB, se a encontrar. (# 8853)
+- O NVDA passa a anunciar a selecção ou des-selecção após o anúncio do texto respectivo. (#9028, #9909)
+- No código do  Microsoft Visual Studio, o modo de navegação é desactivado por padrão. (#9828)
+
+
+== Correcções ==
+- O NVDA já não cracha quando uma pasta de um extra está vazia. (#7686)
+- As marcas LTR e RTL já não são anunciadas em Braille ou em voz ao navegar por caractere ao aceder à janela de propriedades. (#8361)
+- Ao saltar para um campo de formulário, em Modo de navegação, o campo será lido na sua totalidade e não apenas a primeira linha. (#9388)
+- O NVDA já não fica silencioso após sair do Correio do Windows 10. (#9341)
+- O NVDA já não falha ao arrancar com o Windows definido para um idioma que o NVDA não conhece, como por exemplo, Inglês (Holanda). (#8726)
+- Quando o Modo de navegação está activado no Microsoft Excel e alterna para um navegador em modo de foco, ou vice versa, o modo de navegação é anunciado correctamente. (#8846)
+- O NVDA já anuncia correctamente o número da linha com o ponteiro do rato no Notepad++ e outros editores de texto baseadas em Scintilla. (#5450)
+- No Google Docs (e outros editores na Net), já não é anunciado em Braille, antes do cursor, "fim de lst" no meio de um item de lista. (#9477)
+- Na actualização de Maio de 2019 do Windows 10, o NVDA já não anuncia as notificações de alteração do volume feitas com teclas de hardware quando o foco está no Explorador de ficheiros. (#9466)
+- o carregamento da lista do diálogo "Pronúncia de de pontuação e símbolos" é muito mais rápida mesmo com mais de 1000 entradas. (#8790)
+- Nos editores baseados em Scintilla, como o Notepad++, o NVDA já anuncia correctamente o número da linha com a translineação activada. (#9424)
+- No Microsoft Excel, as coordenadas da célula já são anunciadas após mudança provocada pelo pressionar de shift+enter ou shift+numpadEnter. (#9499)
+- No Visual Studio 2017 e posteriores, na janela do Explorador de Objectos o item seleccionado na estrutura de objectos ou estrutura de membros com categorias já é anunciado correctamente. (#9311)
+- Extras cujos nomes sejam apenas diferentes na capitalização já não são tratados como extras separados. (#9334)
+- Para o sintetizador Windows OneCore voices, a velocidade configurada no NVDA já não é afectada pela velocidade definida nas configurações de voz do Windows 10. (#7498)
+- O ficheiro de log já pode ser aberto com NVDA+F1 quando não exista informações para desenvolvimento para o objecto em foco. (#8613)
+- É novamente possível usar os comandos de navegação de tabelas do NVDA no Google Docs, no Firefox e no Chrome. (#9494)
+- As teclas "bumper" das linhas Braille da Freedom Scientific já funcionam correctamente. (# 8849)
+- Ao ler o primeiro caractere de um documento, no Notepad ++ 7.7 X64, o NVDA já não congela por até dez segundos. (# 9609)
+- O HTCom já pode ser usado com uma linha Braille da Handy Tech em conjunto com o NVDA. (#9691)
+- No Mozilla Firefox, as actualizações de uma live region já não são anunciadas se a live region estiver numa aba em segundo plano. (#1318)
+- O diálogo Localizar do NVDA, em modo de navegação, já não falha, mesmo que o diálogo Sobre o NVDA esteja aberto em segundo plano. (#8566)
+
+
+== Alterações para desenvolvedores ==
+- You can now set the "disableBrowseModeByDefault" property on app modules to leave browse mode off by default. (#8846)
+- The extended window style of a window is now exposed using the `extendedWindowStyle` property on Window objects and their derivatives. (#9136)
+- Updated comtypes package to 1.1.7. (#9440, #8522)
+- When using the report module info command, the order of information has changed to present the module first. (#7338)
+- Added an example to demonstrate using nvdaControllerClient.dll from C#. (#9600)
+- Added a new isWin10 function to the winVersion module which returns whether or not this copy of NVDA is running on (at least) the supplied release version of Windows 10 (such as 1903). (#9761)
+- The NVDA Python console now  contains more useful modules in its namespace (such as appModules, globalPlugins, config and textInfos). (#9789)
+- The result of the last executed command in the NVDA Python console is now accessible from the _ (line) variable. (#9782)
+ - Note that this shadows the gettext translation function also called "_". To access the translation function: del _
+
+
+= 2019.1.1 =
+Esta versão pontual corrige os seguintes erros:
+- O NVDA já não causa falhas no Excel 2007 nem deixa de informar que uma célula tem fórmulas. (#9431)
+- O Google Chrome já não trava ao interagir com determinadas caixas de listas. (#9364)
+- Foi corrigido um problema que impedia a cópia de configurações do utilizador para as configurações do sistema. (#9448)
+- No Microsoft Excel, o NVDA usa novamente a mensagem traduzida ao informar a localização das células mescladas. (#9471)
+
+= 2019.1 =
+Os destaques desta versão incluem:
+- Melhorias no desempenho ao utilizar o Microsoft Word e o Excel;
+- Maior estabilidade e melhorias de segurança, como suporte para extras com informações de compatibilidade de versão;
+- Muitas outras correções de bugs.
+
+Nota importante:
+A partir desta versão do NVDA, appModules globalPlugins, brailleDisplayDrivers e synthDrivers personalizados já não serão carregados automaticamente a partir da pasta de configurações do utilizador do NVDA.
+Em vez disso, esses módulos devem ser instalados como parte de um extra do NVDA.
+Para quem desenvolve código para um extra, o código para teste pode ser colocado na nova pasta scratchpad dentro da pasta de configurações do utilizador do NVDA, se a opção "Activar carregamento de código da pasta Scratchpad" estiver ativada na nova secção Avançadas das Configurações do NVDA.
+Estas alterações são necessárias para garantir melhor a compatibilidade do código personalizado, para que o NVDA não crache quando esse código se tornar incompatível com versões mais recentes.
+Por favor, consulte a lista de alterações mais abaixo para obter mais detalhes sobre isto e como os os extras são mais controlados em relação às versões do NVDA.
+
+
+== Novas funcionalidades ==
+- Novas tabelas Braille: Árabe Braille de computador de 8 pontos, Árabe grau 2 e Espanhol grau 2. (#4435)
+- Adicionada uma opção às configurações do rato do NVDA, para que o NVDA lide melhor com situações em que o rato é controlado por outra aplicação. (# 8452)
+ - Isto permitirá que o NVDA siga o rato, mesmo quando o sistema estiver a ser controlado remotamente usando o TeamViewer ou outro software de controle remoto.
+- Adicionado o parâmetro de linha de comando "--disable-start-on-logon" para permitir instalações silenciosas do NVDA que não são executadas, por padrão, na janela de logon. (# 8574)
+- É possível desactivar os recursos de registo do NVDA definindo o nível de registo para "desactivado" no painel de configurações gerais. (# 8516)
+- A presença de fórmulas nas folhas de cálculo do LibreOffice e do Apache OpenOffice passa a ser anunciada. (# 860)
+- No Mozilla Firefox e Google Chrome, o modo de navegação agora anuncia o item selecionado em caixas de listas e estruturas hierárquicas.
+ - Isto funciona no Firefox 66 e seguintes;
+ - Isto não funciona para certas caixas de listas (HTML select controls) no Chrome.
+- Adicionada a tabela Braille Africander. (#9186)
+- Suporte inicial para aplicações como o Mozilla Firefox em computadores com processadores ARM64 (por exemplo, Qualcomm Snapdragon). (# 9216)
+- Uma nova categoria de Configurações, Avançadas, foi adicionada ao diálogo Configurações do NVDA, incluindo uma opção para testar o novo suporte do NVDA para o Microsoft Word através da API  UI Automation da Microsoft. (# 9200)
+- Adicionado suporte para a visualização gráfica na Gestão de Discos do Windows. (# 1486)
+- Adicionado suporte às linhas Braille Handy Tech Connect Braille e Basic Braille 84. (#9249)
+
+
+== Alterações ==
+- Actualizado o conversor Braille liblouis para a versão 3.8.0. (#9013)
+- O autor de um extras deve passar a indicar a versão mínima exigida do NVDA para que o extra funcione. O NVDA não instalará ou carregará um extra cuja versão mínima exigida do NVDA seja superior à versão actual do NVDA. (#6275)
+- O autor de um extra deve passar a indicar a última versão do NVDA com que foi testado. Se um extra foi testado com uma versão do NVDA inferior à versão actual, o NVDA não instalará ou carregará o extra. (#6275)
+- Esta versão do NVDA permitirá a instalação e o carregamento de extras que ainda não contenham informações sobre a versão mínima exigida e última testada do NVDA, mas a actualização para futuras versões do NVDA (por exemplo, 2019.2) poderá fazer com que esses extras mais antigos sejam desactivados.
+- O comando Mover o rato  para o objeto de navegação está agora disponível no Microsoft Word, bem como para os controles UIA, especialmente o Microsoft Edge. (# 7916, #8371)
+- O anúncio de texto sob o rato foi melhorado no Microsoft Edge e em outros aplicativos UIA. (# 8370)
+- Quando o NVDA é iniciado com o parâmetro de linha de comando "--portable-path", o caminho fornecido é automaticamente preenchido ao tentar criar uma cópia portátil do NVDA usando o menu do NVDA. (# 8623)
+- Actualizado o caminho para a tabela Braille norueguesa, para reflectir o padrão do ano de 2015. (# 9170)
+- Ao navegar por parágrafo (control + setas) ou por células de tabela (control + alt + setas), a existência de erros ortográficos não será mais anunciada, mesmo que o NVDA esteja configurado para anunciá-los automaticamente. Isso ocorre porque os parágrafos e as células de tabela podem ser muito grandes, e o cálculo de erros de ortografia em alguns aplicativos pode ser muito demorado. (# 9217)
+- O NVDA deixa de carregar, automaticamente, os appModules, globalPlugins e drivers de linhas Braille e de sintetizadores personalizados do diretório de configurações do utilizador do NVDA. Esse código deve ser incluido num extra, com as informações de versão corretas, garantindo que o código incompatível não seja executado com as versões actuais do NVDA. (# 9238)
+ - Para os desenvolvedores que precisam de testar o código, enquanto está a ser desenvolvido, devem activar o diretório "scratchpad" do NVDA na categoria Avançadas das configurações do NVDA, e colocar o código no diretório "scratchpad" encontrado no diretório de configurações do NVDA, quando esta opção está activada.
+
+
+== Correcções ==
+- Windows OneCore voices do Windows 10 abril de 2018 e posteriores, grandes espaços de silêncio já não são inseridos entre instâncias de voz. (# 8985)
+- Ao mover por caractere em controlos de texto sem formatação (como o Bloco de Notas) ou no modo de navegação, os caracteres emoji de 32 bits constituidos por dois pontos de código UTF-16 (como 🤦) passam a ser lidos correctamente. (#8782)
+- O diálogo de confirmação de reinicialização após mudar idioma gve a sua interface melhorada. O texto e as etiquetas dos botões estão mais concisos e menos confusos. (# 6416)
+- Se um sintetizador de terceiros não for carregado, o NVDA voltará a falar com o Windows OneCore Voices no Windows 10, em vez de falar com o eSpeake. (#9025)
+- Removido o "Diálogo de boas-vindas" no menu do NVDA em janelas seguras. (# 8520)
+- Ao navegar com Tab ou ao usar a navegação rápida no modo de navegação, as legendas nos painéis de guias passam a ser anunciadas de forma mais consistente. (# 709)
+- O NVDA passa a anunciar alterações de seleção para determinados selecionadores de tempo, como no aplicativo Alarmes e Relógio. (# 5231)
+- No Centro de Ação do Windows 10, o NVDA passa a anunciar as mudanças de estado ao alternar ações rápidas, como brilho e assistência de foco. (# 8954)
+- No Centro de ação no Windows 10 de outubro de 2018 e anteriores, o NVDA passa a reconhecer o controle de ação rápida do brilho como um botão em vez de um botão de alternância. (# 8845)
+- O NVDA volta a seguir o cursor, e a anunciar os caracteres excluídos, na edição de células e no diálogo Localizar do Microsoft Excel. (# 9042)
+- Corrigida uma falha rara no modo de navegação no Firefox. (# 9152)- Fixed a rare browse mode crash in Firefox. (#9152)
+- O NVDA deixa de falhar ao anunciar o foco de alguns controlos, quando recolhidos, nos frisos do Microsoft Office 2016.
+- O NVDA deixa de falhar ao informar o contacto sugerido enquanto inserimos endereços em novas mensagens no Outlook 2016. (# 8502)
+- As últimas teclas de routing das linhas eurobraille de 80 células já não colocam o cursor para uma posição no início ou logo após o início da nova linha. (#9160)
+- A navegação em tabela na vista agrupada por conversação no Mozilla Thunderbird foi corrigida. (#8396)
+- No Mozilla Firefox e no Google Chrome, a mudança para o modo de foco já funciona correctamente para determinadas caixas de lista e estruturas hierárquicas (onde a caixa de lista / estrutura hierárquica não é focável, mas os seus itens são). (#3573, #9157)
+- O modo de navegação já é correctamente activado por padrão ao ler mensagens no Outlook 2016/365 se estiver a usar o suporte experimental ao UI Automation do NVDA para documentos do Word. (#9188)
+- Passa a ser menos provável que o NVDA crache, de tal maneira que seja obrigado a terminar a sessão actual do Windows. (#6291)
+- No Windows 10, actualização de outubro de 2018 e seguintes, ao abrir o histórico da área de transferência na nuvem, com a área de transferência vazia, o NVDA anunciará o status da área de transferência. (#9112)
+- - No Windows 10, actualização de outubro de 2018 e posteriores, ao procurar por emojis no painel de emojis, o NVDA anunciará os melhores resultados da pesquisa. (#9112)
+- O NVDA já não pára na janela principal do Virtualbox 5.2 e superiores. (#9202)
+- A velocidade de resposta no Microsoft Word ao navegar por linha, parágrafo ou células de tabela, foi bastante melhorada em alguns documentos. Relembramos que, para uma melhor performance, configure o Microsoft Word para a visualização de rascunho com alt+j,r após abrir um documento. (#9217) 
+- No Mozilla Firefox e no Google Chrome, os alertas vazios deixam de ser anunciados. (# 5657)
+- Melhorias significativas no desempenho ao navegar pelas células no Microsoft Excel, especialmente quando o livro contém comentários e/ou listas suspensas de validação. (# 7348)
+- Já não é necessário desactivar a edição na célula nas opções do Microsoft Excel para termos acesso ao campo de edição de célula com o NVDA no Excel 2016/365. (# 8146)
+- Corrigida uma paragem no Firefox, que acontecia às vezes, quando se usava a navegação rápida por marcas, se o extra Enhanced Aria estivesse em uso. (# 8980) 
+
+
+== Changes for Developers ==
+- NVDA can now  be built with all editions of Microsoft Visual Studio 2017 (not just the Community edition). (#8939)
+- You can now include log output from liblouis into the NVDA log by setting the louis boolean flag in the debugLogging section of the NVDA configuration. (#4554)
+- Add-on authors are now able to provide NVDA version compatibility information in add-on manifests. (#6275, #9055)
+ - minimumNVDAVersion: The minimum required version of NVDA for an add-on to work properly.
+ - lastTestedNVDAVersion: The last version of NVDA an add-on has been tested with.
+- OffsetsTextInfo objects can now implement the _getBoundingRectFromOffset method to allow retrieval of bounding rectangles per characters instead of points. (#8572)
+- Added a boundingRect property to TextInfo objects to retrieve the bounding rectangle of a range of text. (#8371)
+- Properties and methods within classes can now be marked as abstract in NVDA. These classes will raise an error if instantiated. (#8294, #8652, #8658)
+- NVDA can log the time since input when text is spoken, which helps in measuring perceived responsiveness. This can be enabled by setting the timeSinceInput setting to True in the debugLog section of the NVDA configuration. (#9167)
+
+
+= 2018.4.1 =
+Esta versão resolve um crash ao iniciar o NVDA, se o idioma da interface do NVDA estiver configurado para Aragonês. (#9089)
+
+
+= 2018.4 =
+Os destaques desta versão são:
+- Melhorias na performance nas versões  recentes do Mozilla Firefox;
+- anúncio de emojis com todos os sintetizadores;
+- Anúncio do estado  respondida/Reencaminhada no Microsoft Outlook;
+- Anúncio da distância às bordas superiores e esquerda da página no Microsoft Word;
+- Muitas correcções de erros.
+
+== Novas Funcionalidades ==
+- Novas tabelas Braille: Chinês (China, Mandarin) grau 1 e grau 2. (#5553)
+- O NVDA agora pode ler descrições de emoji, bem como outros caracteres que fazem parte do Repositório Unicode Common Locale Data Repository. (#6523)
+- No Microsoft Word, a distância do cursor às bordas superior e esquerda da página pode ser anunciada pressionando NVDA+Delete do numérico. (#1939)
+- No Google Sheets, com o modo braille ativado, o NVDA não anuncia mais 'selecionado' em todas as células ao mover o foco entre as células. (#8879)
+- Adicionado suporte para o Foxit Reader e Foxit Phantom PDF (#8944)
+- Adicionado suporte para o DBeaver database tool. (#8905)
+
+
+== Alterações ==
+- "Anunciar balões de ajuda" no diálogo Apresentação de Objectos foi renomeado para "Anunciar notificações" para incluir o anúncio de notificações (toast) no Windows 8 e seguintes. (#5789)
+- No diálogo Teclado as caixas de verificação para activar/desactivar as teclas modificadoras do NVDA passam a estar numa lista, em vez de caixas de verificação separadas.
+- O NVDA já não anuncia informação redundante ao ler o relógio na barra de notificações em algumas versões do Windows. (#4364)
+- Actualizado o conversor Braille liblouis para a versão 3.7.0. (#8697)
+- Atualizado o eSpeak-NG para o commit 919f3240cbb.
+
+
+== Bug Fixes ==
+- No Outlook 2016/365, os sinalizadores da categoria e do estado das mensagens já são anunciadas. (#8603)
+- Quando o NVDA está configurado para idiomas como Kirgyz, Mongol ou Macedónio, já não apresenta um diálogo, no arranque, a avisar que o idioma não é suportado pelo sistema operativo. (#8064)
+- O comando para mover o rato para o objecto de navegação move, com mais precisão, o rato para a posição actual no modo de navegação no Mozilla Firefox, Google Chrome and Acrobat Reader DC. (#6460)
+- A interacção com caixas combbinadas no Firefox, Chrome e Internet Explorer foi melhorada. (#8664)
+- Nas versões  Japonesas do Windows XP ou Vista, o NVDA já apresenta o aviso de requisitos de versão correctamente. (#8771)
+- Melhorada a performance no Mozilla Firefox ao navegar por páginas grandes com várias alterações dinâmicas. (#8678)
+- Já não é mostrado em Braille os atributos  do tipo de letra, se estiverem desactivados nas configurações de Formatação de Documentos. (#7615)
+- O NVDA já não perde o foco no Explorador de ficheiros e outras aplicaçõess usando UI Automation quando outra aplicação está ocupada como, por exemplo, como ao processar grandes lotes de áudio). (#7345)
+- Nos menus ARIA, na Web, a tecla Escape é passada para o menu e já não desativa o modo de foco incondicionalmente. (#3215)
+- O NVDA já anuncia o foco em páginas Web onde o novo foco substitui um controlo que já não existe. (#6606, #8341)
+- No novo GMail, ao usar as teclas de navegação rápida enquanto se lê mensagens, já não é anunciado todo o corpo da mensagem após o elemento para o qual se moveu. (#8887)
+- Depois de actualizar o NVDA, navegadores como o Firefox e google Chrome já não devem crachar, e o modo de navegação  deve continuar a reflectir correctamente atualizações para os documentos actualmente carregados. (#7641) 
+- O NVDA já não anuncia múltiplas vezes seguidas Clicável ao navegar por conteúdo clicável em modo de navegação. (#7430)
+- Comandos executados numa baum Vario 40 já são executados. (#8894)
+- No Google Slides com o Mozilla Firefox, o NVDA já não anuncia texto selecionado em todos os controlos em foco. (# 8964)
+
+
+== Changes for Developers ==
+- gui.nvdaControls now contains two classes to create accessible lists with check boxes. (#7325)
+ - CustomCheckListBox is an accessible subclass of wx.CheckListBox.
+ - AutoWidthColumnCheckListCtrl adds accessible check boxes to an AutoWidthColumnListCtrl, which itself is based on wx.ListCtrl.
+- If you need to make a wx widget accessible which isn't already, it is possible to do so by using an instance of gui.accPropServer.IAccPropServer_impl. (#7491)
+ - See the implementation of gui.nvdaControls.ListCtrlAccPropServer for more info.
+- Updated configobj to 5.1.0dev commit 5b5de48a. (#4470)
+- The config.post_configProfileSwitch action now takes the optional prevConf keyword argument, allowing handlers to take action based on differences between configuration before and after the profile switch. (#8758)
+
+
+= 2018.3.2 =
+Apenas para corrigir um bug que provocava falhas no Google Chrome ao navegar por tweetts em www.twitter.com. (#8777)
+
+ 
+= 2018.3.1 =
+Apenas para corrigir um bug que provocava falhas na versão de 32 bit do Mozilla Firefox. (#8759)
+ 
+
+= 2018.3 =
+Os destaques desta versão são:
+- Detecção automática de várias linhas Braille;
+- Suporte para novas funcionalidades do Windows 10 tais como, o painel de introdução de Imojis do Windows 10.
+
+== Novas Funcionalidades ==
+- O NVDA passa a anunciar os erros gramaticais, quando reportados pelo Mozilla Firefox em páginas Web. (#8280)
+- Conteúdo marcado como sendo inserido ou apagado, em páginas web, passa a ser anunciado no Google Chrome. (#8558)
+- Adicionado suporte para as rodas de deslocamento dos BrailleNote QT e Apex BT, quando usados como linha Braille do NVDA. (#6316)
+- Adicionado comando para anunciar o tempo total e já reproduzido da pista actual no Foobar2000. (#6596)
+- O símbolo da tecla Comando do Mac (⌘) passa a ser anunciada ao ler texto com qualquer sintetizador. (#8366)
+- Funções personalizadas via atributos aria-roledescription passam a ser suportados no Firefox, Chrome e Internet Explorer.
+- Novas tabelas Braille: Checo 8 pontos, Kurdo Central, Esperanto, Húngaro e Sueco Braille informático de 8 pontos. (#8227)
+- Adicionado suporte para detecção automática de linhas braille em segundo plano. (#1271)
+ - São já suportadas as linhas ALVA, Baum/HumanWare/APH/Orbit, Eurobraille, HandyTech, Hims, SuperBraille and HumanWare BrailleNote and Brailliant BI/B.
+ - Pode activar esta funcionalidade, seleccionando "Automático" na opção "Linha Braille" do diálogo "Seleccionar linha Braille".
+ - Por favor, consulte a documentação para mais informações.
+- Adicionado suporte para várias formas modernas de introdução de texto, introduzidas em versões recentes do Windows 10. Estão incluidas o painel de emoji (update Fall Creators), ditado (Update Fall Creators), sugestões para o teclado de hardware (Update Abril 2018) e colar do cloud clipboard (Update Outubro 2018). (#7273)
+- Conteúdo marcado como citação usando ARIA (role blockquote) passa a ser suportado no Mozilla Firefox 63. (#8577)
+
+
+== Alterações ==
+- A lista de idiomas disponíveis, na secção "Gerais" das configurações do NVDA, passa a ser ordenada pelo nome do idioma e não pelo código ISO 639. (#7284)
+- Adicionados comandos padrão para simular o alt shift tab e windows tab em todas as linhas Braille da Freedom Scientific suportadas. (#7387)
+- Para as linhas Braille da ALVA, BC680 e protocol converter, já é possível associar funções diferentes para as teclas smart pad, thumb e etouch  da esquerda e direita. (#8230)
+- Para as linhas Braille ALVA BC6, a combinação sp2+sp3 anunciará a data e hora, enquanto que sp1+sp2 simulará a tecla Windows. (#8230)
+- O utilizador será questionado, apenas uma vez, no arranque do NVDA se permitem o envio de dados de utilização para a NV Access, ao verificar automaticamente por actualizações. (#8217)
+- Ao verificar por actualizações, se o utilizador concordou com a recolha de dados de utilização pela NV Access, o NVDA irá enviar o nome dos drivers do sintetizador e da linha Braille em uso, para ajudar na melhor prioritização do trabalho futuro nesses drivers. (#8217)
+- Actualizado o conversor Braille Liblouis para a versão 3.6.0. (#8365)
+- Actualizado o caminho para a tabela Braille correcta Russo 8 pontos. (#8446)
+- Actualizado o eSpeak-ng to 1.49.3dev (commit 910f4c2). (#8561)
+
+
+== Correções ==
+- As etiquetas acessíveis de controlos no Google Chrome, quando não fazem parte do conteúdo, são anunciadas mais prontamente em modo de navegação. (#4773)
+- As notificações já são suportadas no Zoom. Por exemplo, estado mute/unmute e mensagens recebidas. (#7754)
+- Alternar o contexto seguido pela linha Braille em modo de navegação já não provoca a paragem da alternância automática do contexto do Braille. (#7741)
+- As linhas Braille ALVA BC680 já não falham, intermitentemente, a inicialização. (#8106)
+- Por padrão, as linhas ALVA BC6 já não executam a simulação de teclas do sistema ao pressionar combinações de teclas envolvendo sp2+sp3 para activar funcionalidades internas. (#8230)
+- Pressionar sp2 numa linha ALVA BC6 para simular a tecla alt já funciona como previsto. (#8360)
+- O NVDA já não anuncia alterações de esquema de teclado redundantes. (#7383, #8419)
+- O seguimento do rato é agora mais preciso no Notepad e noutros controlos de edição de texto simples, num documento com mais de 65535 caracteres. (#8397)
+- O NVDA passa a reconhecer mais diálogos do Windows 10 e de outras aplicações modernas. (#8405)
+- Na actualização de Outubro de 2018 do Windows 10, Server 2019 e seguintes, o NVDA já não perde o seguimento do foco quando uma aplicação congela ou perde o foco. (#7345, #8535)
+- O utilizador passa a ser informado se tentar ler ou copiar o conteúdo da barra de estado quando esta se encontrar vazia. (#7789)
+- Corrigida a situação em que o estado "Não marcado" de uma caixa de verificação não é anunciado por voz se antes estava parcialmente marcada. (#6946)
+- Na lista de idiomas no diálogo Gerais das configurações do NVDA o nome do idioma Birmanês é corretamente anunciado em Windows 7. (#8544)
+- No Microsoft Edge, o NVDA passa a anunciar as notificações, tais como a disponibilidade da Vista de leitura ou o progresso de carregamento da página. (#8423)
+- Tal como noutros campos de texto multilinha, quando o foco está posicionado no início do texto de um documento, o texto na linha Braille, é posicionado de maneira a que o primeiro caracter do texto ocupe a primeira célula da linha. (#8406)
+- Ao navegar numa página, quando se entra numa lista, o NVDA anunciará o nome da lista, se ele foi indicado pelo autor da página. (#7652)
+- Ao associar, manualmente, comandos a teclas, para uma linha Braille específica, essas teclas passarão a aparecer como associadas para essa linha, e não para a linha activa no momento. (#8108)
+- A versão de 64-bit do Media Player Classic já é suportada. (#6066)
+- Melhoramentos no suporte Braille no Microsoft Word com UI Automation activada:
+ - Reduzida a verbosidade da apresentação do foco quer em voz quer em Braille, ao focar um documento do Word. (#8407)
+ - As teclas routing da linha Braille já funcionam correctamente numa lista de um documento Word. (#7971)
+ - As marcas e os números introduzidos num documento Word já são correctamente anunciados em voz e Braille. (#7970)
+- No Windows 10 1803 e seguintes, já é possível instalar extras mesmo com a funcionalidade de suporte a  Unicode UTF-8 activa. (#8599)
+ 
+
+== Alterações para Desenvolvedores ==
+- Added scriptHandler.script, which can function as a decorator for scripts on scriptable objects. (#6266)
+- A system test framework has been introduced for NVDA. (#708)
+- Some changes have been made to the hwPortUtils module: (#1271)
+ - listUsbDevices now yields dictionaries with device information including hardwareID and devicePath.
+ - Dictionaries yielded by listComPorts now also contain a usbID entry for COM ports with USB VID/PID information in their hardware ID.
+- Updated wxPython to 4.0.3. (#7077)
+- As NVDA now only supports Windows 7 SP1 and later, the key "minWindowsVersion" used to check if UIA should be enabled for a particular release of Windows has been removed. (#8422)
+- You can now register to be notified about configuration saves/reset actions via new config.pre_configSave, config.post_configSave, config.pre_configReset, and config.post_configReset actions. (#7598)
+ - config.pre_configSave is used to be notified when NVDA's configuration is about to be saved, and config.post_configSave is called after configuration has been saved.
+ - config.pre_configReset and config.post_configReset includes a factory defaults flag to specify if settings are reloaded from disk (false) or reset to defaults (true).
+- config.configProfileSwitch has been renamed to config.post_configProfileSwitch to reflect the fact that this action is called after profile switch takes place. (#7598)
+- UI Automation interfaces updated to Windows 10 October 2018 Update and Server 2019 (IUIAutomation6 / IUIAutomationElement9). (#8473)
+
+
+= 2018.2.1 =
+Esta versão apenas corrige alguns problemas de tradução, devido à remoção de uma funcionalidade com problemas.
+
+
+= 2018.2 =
+
+Os destaques desta versão são:
+- Suporte para tabelas no Kindle for PC;
+-  suporte para as linhas Braille BrailleNote Touch e BI14  da Humanware;
+- Melhorias nos sintetizadores Windows OneCore e Sapi5;
+
+
+== Novas Funcionalidades ==
+- A expansão de linhas e colunas numa célula de tabela passa a ser anunciada em voz e Braille. (#2642)
+- Os comandos de navegação em tabelas do NVDA já são suportados no Google Docs, com o modo Braille activado. (#7946)
+- Possibilidade de ler e navegar por tabelas no Kindle para PC. (#7977)
+- Suporte para as linhas BrailleNote touch e Brailliant BI 14 via USB e Bluetooth. (#6524)
+- No Windows 10 Fall Creators Update e seguintes, o NVDA já anuncia as notificações de aplicações como a Calculadora e a Loja. (#8045)
+- Novas tabelas de conversão Braille: Lituano 8 pontos, Ucraniano, Mongol grau 2. (#7839)
+- Introduzido um comando para anunciar as informações de formatação do caracter numa célula Braille. (#7106)
+- Ao actualizar o NVDA, já é possível adiar a instalação da versão descarregada para um momento mais opurtuno. (#4263) 
+- Novos idiomas: Mongol e Alemão da Suiça.
+- Pode agora manter pressionadas, virtualmente, as teclas control, shift, alt, windows e NVDA, a partir do teclado da linha Braille e combinar esses modificadores com letras escritas no teclado Braille, (por exemplo, pressionar Control+s). (#7306);
+ - Pode associar estas funcionalidades a comandos através da opção Definir comandos, Simulação de teclas do sistema.
+- Reposto o suporte para as linhas Braille Braillino e Modular da HandyTech com firmware antigo. (#8016)
+- Nos dispositivos HandyTech suportados, como Active Braille e Active Star, a data e hora serão automaticamente sincronizadas pelo NVDA, sempre que a diferença for superior a cinco segundos. (#8016)
+- Pode ser definido um comando para desactivar temporariamente todos os accionadores de perfis. (#4935)
+
+
+== Alterações ==
+- Os valors da coluna "Estado" do Gestor de extras foi alterado de "Em execução" e "Suspenso", para "Activado" e Desactivado" . (#7929)
+- Foram também introduzidos mais dois estados, "Activado após reinício" e "Desactivado após reinício". (#7929)
+- Actualizado o liblouis braille translator para a versão 3.5.0. (#7839)
+- A tabela Braille Lituano foi renomeada para Lituano 6 pontos, para evitar confusão com a nova tabela de 8 pontos. (#7839)
+- As tabelas Braille Francês (Canadá) grau 1 e grau 2 foram removidas. Passam a ser usadas Francês (unificado) braille de computador de 6 pontos e Grau 2, respectivamente. (#7839)
+- Os botões da  linha secundária de routing das linhas Braille Alva BC6, EuroBraille e Papenmeier passam a anunciar a informação de formatação do caracter respectivo. (#7106)
+- As tabelas de conversão Braille contraído passarão automaticamente para Braille não contraído quando não se está num campo de edição, como controlos onde não haja cursor ou em modo de navegação. (#7306)
+- O NVDA está menos falador quando um evento ou um horário no calendário  do Outlook ocupa um dia inteiro. (#7949)
+- Todas as opções do NVDA estão agora agrupadas num diálogo de configurações no menu Opções do NVDA, em vez de estarem espalhadas por vários diálogos. (#7302)
+- O sintetizador padrão do NVDA, quando executado em Windows 10, passa a ser o Windows OneCore voices, em vez do eSpeak. (#8176)
+
+
+== Correções ==
+- O NVDA já lê sempre os controlos em foco da janela de login da conta Microsoft após ser introduzido o endereço de e-mail. (#7997)
+- O NVDA já não deixa de ler o conteúdo de uma página quando se retrocede para a mesma no Microsoft Edge. (#7997)
+- O NVDA já não anuncia, incorrectamente, o último caracter da password, na janela de login do windows 10, ao desbloquear o PC. (#7908)
+- As etiquetas de caixas de verificação e botões de rádio já não são anunciadas em duplicado no Chrome e Firefox, ao navegar com Tab ou por caracteres em modo de navegação. (#7960)
+- Tratar aria-current com o valor de false como false em vez de true (#7892).
+- O driver do sintetizador Windows OneCore Voices já não deixa de carregar pela remoção de uma voz configurada. (#7999)
+- A alteração de voz no driver do sintetizador Windows OneCore Voices é agora muito mais rápida. (#7999)
+- Corrigidos erros na saída Braille em diversas tabelas Braille, incluindo o sinal de maiúsculas em dinamarquês de 8 pontos. (#7526, #7693)
+- O NVDA passa a anunciar mais tipos de bullets no Microsoft Word. (#6778)
+- Ao pressionar o comando para anúncio de informações de formatação, a posição de revisão já não é alterada, e por isso já não são fornecidas falsas informações ao pressionar o comando mais de uma vez. (#7869)
+- A escrita em Braille já não permite Braille contraído onde não seja suportado, ou seja, as palavras completas só serão enviadas ao sistema em áreas editáveis. (#7306)
+- Corrigidos problemas de estabilidade nas ligações das linhas Braille HandyTech Easy Braille e Braille Wave. (#8016)
+- Em Windows 8 ou superior, o NVDA já não anunciará "Desconhecido" ao abrir  o menu rápido )Windows+X) e ao seleccionar itens desse menu. (#8137)
+- Os comandos específicos de modelos relativos aos botões das linhas Braille da HIMS já funcionam como referido no respectibo manual. (#8096)
+- O NVDA passa a tentar corrigir os problemas de registo de DLLs do sistema, causadores de programas como o Firefox e Internet Explorer ficarem parcialmente inacessíveis, causando o anúncio de "Desconhecido" pelo NVDA. (#2807)
+- Torneado um bug no Gestor de Tarefas que fazia com que o NVDA impedisse o utilizador de acessar conteúdo de alguns detalhes sobre processos. (#8147)
+- As novas vozes Microsoft SAPI5 já não apresentam pausas no fim da fala, sendo assim muito mais eficiente navegar com essas vozes. (#8174)
+- O NVDA já não anuncia marcas (LTR e RTL em Braille ou em voz por-caractere, ao acessar o relógio de versões recentes do Windows. (#5729)
+- A detecção das teclas de deslocação da linha Smart Beetle  da HIMS volta a ser confiável. (#6086)
+- Em alguns controlos de texto, especialmente em aplicações Delphi as informações sobre edição e navegação já é muito mais confiável. (#636, #8102)
+- Em Windows 10 RS5, o NVDA já não anuncia informação redundante ao mudar de janela com alt+tab. (#8258)
+
+
+== Alterações para Desenvolvedores ==
+- The developer info for UIA objects now contains a list of the UIA patterns available. (#5712)
+- App modules can now force certain windows to always use UIA by implementing the isGoodUIAWindow method. (#7961)
+- The hidden boolean flag "outputPass1Only" in the braille section of the configuration has again been removed. Liblouis no longer supports pass 1 only output. (#7839)
+
+
+= 2018.1.1 =
+Esta é uma versão especial do NVDA 2018.1 para resolver um problema do driver do sintetizador Windows OneCore voices, que provocava um aumento da entoação e velocidade no Windows 10 Redstone 4 (1803). (#8082)  
+
+
+= 2018.1 =
+Os destaques desta versão são:
+- Suporte para gráficos no Microsoft word e PowerPoint
+- Suporte para mais linhas Braille, Eurobraille e Optelec ALVA protocol converter
+- Suporte melhorado para as linhas Braille HIMS e Optelec
+- Melhorias no desempenho do NVDA no Mozilla Firefox 58 e superiores.
+-
+
+== Novas Funcionalidades ==
+- Já é possível interagir com gráficos no Microsoft Word e Microsoft PowerPoint, de maneira similar ao suporte existente para gráficos no Microsoft Excel. (#7046)
+ - No Microsoft Word: Em modo de navegação, navegue com o cursor para um gráfico embutido e pressione Enter  para iniciar a interacção com o gráfico;
+ - No Microsoft PowerPoint durante a edição de um slide: Navegue com Tab para um objecto gráfico,  e pressione Enter ou Espaço para iniciar a interacção com esse gráfico;
+ - Para terminar a interacção com um gráfico, pressione Escape.
+- Novo idioma: Quirguiz.
+- Adicionado suporte para VitalSource Bookshelf. (#7155)
+- Adicionado suporte para o Optelec protocol converter, um dispositivo que permite usar as linhas Braille Voyager e Satellite com o protocolo de comunicações das ALVA BC6. (#6731)
+- Já é possível escrever em Braille com as linhas Braille ALVA 640 Comfort. (#7733) 
+ - A funcionalidade de escrita Braille do NVDA pode ser usada com este modelo e com outros da série BC6 com o firmware 3.0.0 ou superior.
+- Suporte parcial para o Google Sheets com o modo Braille activado. (#7935)
+- Suporte para as linhas Braille Eurobraille Esys, Esytime and Iris. (#7488)
+
+
+== Alterações ==
+- Os drivers das linhas Braille da HIMS, Braille Sense/ Braille Edge/Smart Beetle e HIMS Sync Braille, foram substituídos por um único driver do NVDA. O novo driver será activado automaticamente para os utilizadores do antigo driver syncBraille. (#7459)
+ - Algumas teclas, nomeadamente as teclas de deslocamento, foram alteradas, para seguir as convenções usadas pelos produtos da HIMS. Consulte o Manual do Utilizador, para obter mais detalhes.
+- Quando se escreve com o teclado virtual através da interacção por toque, por padrão, é necessário dar dois toques para activar a letra desejada, tal como em qualquer outro controlo.
+ - Para usar o modo existente, em que basta levantar o dedo para activar a letra, active a opção nas novas definições da Interação por toque, presente no menu Preferências. (#7309)
+- Já não é necessário configurar se o braille segue o cursor do sistema ou da revisão, pois a configuração será feita automaticamente por padrão. (#2385) 
+ - Note que o seguimento automático do cursor de revisão só acontecerá quando se utiliza o cursor de revisão ou um comando de navegação por objectos.
+
+
+== Correções ==
+- As mensagens navegáveis, como a informação de formatação, quando se pressiona NVDA+f duas vezes, já não falha quando o NVDA está instalado numa pasta com caracteres não ASCII. (#7474)
+- O foco é novamente restaurado correctamente quando se volta ao Spotify de outra aplicação. (#7689)
+- O NVDA já pode ser actualizado num sistema com o Acesso controlado a Pastas activado (disponível no Windows 10 Fall Creators update). (#7696)
+- Uma pequena melhoria na performance ao renderizar grandes conteúdos no Mozilla Firefox 58 e seguintes. (#7719)
+- Evitados erros ao ler e-mails contendo tabelas, no Microsoft Outlook (#6827)
+- A detecção das teclas de deslocamento da linha Braille HIMS Smart Beetle já é fiável. (#6086)
+- Os comandos dados pelas linhas Braille que emulam teclas modificadoras de sistema, já podem ser combinados com outras teclas de sistema emuladas, se um ou mais dos comando involvidos for específico do modelo. (#7783)
+- No Mozilla Firefox, o Modo de navegação já funciona correctamente em janelas pop-up criadas por extensõess como LastPass e bitwarden. (#7809)
+- O NVDA já não tem paragens ocasionais de cada vez que há mudanças de foco no Firefox ou Chrome devidas a paragens ou crashes. (#7818)
+- Em clientes twitter, como Chicken Nugget, o NVDA já não ignora os últimos 20 caracteres ao ler tweets  com 280 caracteres. (#7828)
+- O NVDA já usa o idioma correcto ao anunciar símbolos e pontuação ao seleccionar texto. (#7687)
+- Em versões recentes do Office 365, volta a ser possível navegar com as setas nos gráficos do Excel. (#7046)
+-  Em voz e em Braille, o estado dos controlos são sempre anunciados na mesma ordem, independentemente de serem positivos ou negativos. Corrige o bug #7076
+- Em aplicações como o Windows 10 Mail, o NVDA já anuncia os caracteres apagados com backspace. (#7456)
+- Todas as teclas do HIMS Braille Sense Polaris já funcionam como esperado. (#7865)
+
+
+== Alterações para Desenvolvedores ==
+- Added a hidden boolean flag to the braille section in the configuration: "outputPass1Only". (#7301, #7693, #7702) 
+ - This flag defaults to true. If false, liblouis multi pass rules will be used for braille output.
+- A new dictionary (braille.RENAMED_DRIVERS) has been added to allow for smooth transition for users using drivers that have been superseded by others. (#7459)
+- Updated comtypes package to 1.1.3. (#7831)
+- Implemented a generic system in braille.BrailleDisplayDriver to deal with displays which send confirmation/acknowledgement packets. See the handyTech braille display driver as an example. (#7590, #7721)
+- A new "isAppX" variable in the config module can be used to detect if NVDA is running as a Windows Desktop Bridge Store app. (#7851)
+- For document implementations such as NVDAObjects or browseMode that have a textInfo, there is now a new documentBase.documentWithTableNavigation class that can be inherited from to gain standard table navigation scripts. Please refer to this class to see which helper methods must be provided by your implementation for table navigation to work. (#7849)
+- The scons batch file now better handles when  Python 3 is also installed, making use of the launcher to specifically launch python 2.7 32 bit. (#7541)
+- hwIo.Hid now takes an additional parameter exclusive, which defaults to True. If set to False, other applications are allowed to communicate with a device while it is connected to NVDA. (#7859)
+
+
+= 2017.4 =
+Os destaques desta versão incluem:
+- Muitas correções e melhorias no suporte Web, incluindo modo de navegação, por padrão, , para os diálogos web e melhor anúncio das etiquetas de grupo de campos, no modo de navegação;
+- Suporte para as novas tecnologias do Windows 10, como o Windows Defender Application Guard e Windows 10 em ARM64;
+- Anúncio automático da orientação do ecrã e estado da bateria.
+- Atenção, esta versão do NVDA já não dá suporte ao Windows XP nem ao Windows Vista! O requisito mínimo para esta versão do NVDA é agora o Windows 7, Service Pack 1.
+
+
+== Novas Funcionalidades ==
+- Em modo de navegação, já é possível saltar para o início de uma região usando o comando (vírgula/shift+vírgula) para saltar para o início ou fim de um contentor. (#5482)
+- No Firefox, Chrome e Internet Explorer, a navegação por caractere para campos de formulário e de edição passa a incluir os campos editáveis de Rich Text (I.e. contentEditable). (#5534)
+- Nos navegadores web a Lista de Elementos já pode listar os campos de formulários e botões. (#588)
+- Suporte inicial para o Windows 10 em ARM64. (#7508)
+- Suporte inicial para leitura e navegação interactiva de conteúdo matemático nos livros Kindle com conteúdo matemático acessível. (#7536)
+- Adicionado suporte para o leitor de E-Books Azardi. (#5848)
+- Informação da versão dos Extras é agora anunciada ao actualizá-los. (#5324)
+- Adicionado novo parâmetro à linha de comandos para criar uma cópia portátil do NVDA. (#6329)
+- Suporte para o Microsoft Edge em execução através do Windows Defender Application Guard no Windows 10 Fall Creators Update. (#7600)
+- Quando executado num computador portátil ou tablet, o NVDA já anuncia quando o carregador é ligado ou desligado, incluindo o nível da bateria, e quando a orientação do ecrã muda. (#4574, #4612)
+- Novo idioma: Macedónio.
+- Novas tabelas Braille: Croata grau 1 e Vietnamita grau 1. (#7518, #7565)
+- Adicionado suporte para a linha Braille Actilino da HandyTech. (#7590)
+- Já é suportada a introdução de texto pelas linhas Braille da HandyTech. (#7590)
+
+
+== Alterações ==
+- O sistema operativo mínimo suportado pelo NVDA passa a ser o Windows 7 Service Pack 1, ou Windows Server 2008 R2 Service Pack 1. (#7546)
+- Os diálogos Web no Firefox e Chrome usam automáticamente o Modo de navegação, excepto se dentro duma aplicação web. (#4493)
+- Em Modo de navegação, navegando com Tab ou por caracteres já não é anunciada a saída de listas ou tabelas, tornando assim a navegação mais fluída. (#2591)
+- Em Modo de navegação no Firefox e Chrome, o nome do grupo de campos de formulários já é anunciado quando são atingidos pela navegação por caracteres ou com Tab. (#3321)
+- Em Modo de navegação, usando a navegação por caracteres, o comando para objectos, (o e shift+o) passa a incluir os elementos de áudio e de vídeo e elementos com aria roles application e dialog. (#7239)
+- O Espeak-ng foi actualizado para a versão 1.49.2, resolvendo alguns problemas ao produzir novas versões. (#7385, #7583)
+- Pressionando três vezes o comando para ler a barra de estado, a informação é copiada para a área de transferência. (#1785)
+- Ao associar comandos a teclas duma linha Braille da Baum pode limitá-los ao modelo específico em uso, (p.e. VarioUltra ou Pronto). (#7517)
+- O atalho para a opção "Filtrar por:" na Lista de elementos no Modo de navegação mudou de alt+F para alt+P. (#7569)
+- Um comando, sem teclas associadas, foi adicionado ao Modo de navegação, para alternar rapidamente a inclusão das tabelas de apresentação. Pode associar teclas a este comando no diálogo Definir comandos, grup Modo de navegação. (#7634)
+- Actualizado o liblouis braille translator to 3.3.0. (#7565)
+-  Os ficheiros dos Dicionários de voz passam a ser versionados e foram movidos para a pasta 'speechDicts/voiceDicts.v1'. (#7592)
+- As alterações aos ficheiros versionados (configurações do utilizador e  dicionários de voz), já não são guardadas se estiver a executar o NVDA a partir do executável. (#7688)
+- As linhas Braille Braillino, Bookworm e Modular, com firmware) antigo, da HandyTech) já não são suportadas automaticamente, sendo necessário instalar o Driver Braille Universal e o Extra do NVDA da HandyTech, para as usar. (#7590)
+
+
+== Correções ==
+- Os links passam a ser indicados em Braille em aplicações como o Microsoft Word. (#6780)
+- O NVDA já não se torna notoriamente lento quando muitos separadores estão abertos nos navegadores Firefox ou Chrome. (#3138)
+- Nas linhas Braille MDV Lilli os cursores de toque já não movem o cursor para a célula seguinte. (#7469)
+- No Internet Explorer e noutros documentos MSHTML, o atributo HTML5 necessário para indicar o estado de um campo de formulário passa a ser suportado. (#7321)
+- O Braille passa a ser actualizado quando se está a escrever caracteres árabes num documento do WordPad alinhado à esquerda. (#511)
+- As etiquetas acessíveis para controlos no Mozilla Firefox passam a ser anunciadas mais rapidamente em Modo de navegação quando a etiqueta não aparece como conteúdo. (#4773)
+- No Windows 10 Creators Update, o NVDA volta a poder aceder ao Firefox após ter sido reiniciado. (#7269)
+- Ao reiniciar o NVDA com o Mozilla Firefox em primeiro plano, o Modo de navegação volta a estar disponível, embora talvez necessite de fazer alt+tab e voltar ao Firefox. (#5758)
+- Já é possível aceder ao conteúdo matemático no Google Chrome num sistema sem o Mozilla Firefox instalado. (#7308)
+- O Sistema operativo e outras aplicações devem ficar mais estáveis, imediatamente após a instalação do NVDA e antes de reiniciar o sistema, em comparação com a instalação de versões anteriores do NVDA. (#7563)
+- Ao usar um comando de reconhecimento de conteúdo, como NVDA+r), o NVDA anunciará uma mensagem de erro, em vez de ficar em silêncio, se o objecto de navegação tiver desaparecido. (#7567)
+- A funcionalidade de deslocamento da linha para trás  foi corrigida para as linhas Braille da Freedom Scientific que possuem uma left bumper bar. (#7713)
+
+
+== Alterações para desenvolvedores ==
+- "scons tests" now checks that translatable strings have translator comments. You can also run this alone with "scons checkPot". (#7492)
+- There is now a new extensionPoints module which provides a generic framework to enable code extensibility at specific points in the code. This allows interested parties to register to be notified when some action occurs (extensionPoints.Action), to modify a specific kind of data (extensionPoints.Filter) or to participate in deciding whether something will be done (extensionPoints.Decider). (#3393)
+- You can now register to be notified about configuration profile switches via the config.configProfileSwitched Action. (#3393)
+- Braille display gestures that emulate system keyboard key modifiers (such as control and alt) can now be combined with other emulated system keyboard keys without explicit definition. (#6213) 
+ - For example, if you have a key on your display bound to the alt key and another display key to downArrow, combining these keys will result in the emulation of alt+downArrow.
+- The braille.BrailleDisplayGesture class now has an extra model property. If provided, pressing a key will generate an additional, model specific gesture identifier. This allows a user to bind gestures limited to a specific braille display model. 
+ - See the baum driver as an example for this new functionality.
+- NVDA is now compiled with Visual Studio 2017 and the Windows 10 SDK. (#7568)
+
+
+= 2017.3 =
+Os destaques desta versão são:
+- Possibilidade de escrever em Braille abreviado;
+- Suporte para as novas vozes Windows OneCore disponíveis no Windows 10;
+- Suporte nativo para o OCR do Windows 10;
+- Muitas melhorias significativas no que respeita ao Braille e à Web.
+-
+
+== Novas Funcionalidades ==
+- Adicionado  um parâmetro nas definições Braille para permitir mostrar as mensagens indefinidamente. (#6669)
+- Na lista de mensagen do Microsoft Outlook passa a ser anunciado se uma mensagem está sinalizada. (#6374)
+- Ao editar um slide no Microsoft PowerPoint, o tipo exacto de forma passa a ser anunciado, por exemplo triângulo, círculo, vídeo ou seta, em vez de apenas "forma". (#7111)
+- Passa a ser suportado, no Google Chrome, conteúdo matemático, se apresentado em MathML. (#7184)
+- O NVDA pode agora utilizar as novas vozes Windows OneCore (também conhecidas por Microsoft Mobile voices) incluídas no Windows 10. Pode utilizá-las seleccionando Windows OneCore voices na janela Sintetizadores do NVDA. (#6159)
+- O NVDA pode guardar as configurações do utilizador na pasta appdata\local em alternativa a appdata\roaming. Isto pode ser configurado através de uma entrada no Registo do Windows. Leia mais na secção "Parâmetros do Sistema" no Manual do Utilizador. (#6812)
+- Nos navegadores Web, o NVDA agora anuncia os valores dos placeholder para campos (mais especificamente, os aria-placeholder  passam a ser suportados). (#7004)
+- No modo de navegação no Microsoft Word, já é possível navegar pelos erros ortográficos usando as teclas de navegação rápida W ou Shift+W. (#6942)
+- Adicionado suporte para o controlo de escolha de data do evento no Microsoft Outlook. (#7217)
+- A sugestão seleccionada passa a ser anunciada nos campos Para:, CC: e BCC: do Correio do Windows 10 e no campo de  pesquisa das definições do Windows 10. (#6241)
+- Agora passa a ser reproduzido um som para anunciar que uma sugestão foi apresentada em certos campos de pesquisa, tais como na pesquisa do menu Iniciar, das definições do Windows 10, e campos Para:, CC; e BCC: do correio do Windows 10. (#6241)
+- Anúncio automático das notificações do Skype for Business Desktop, tais como quando alguém inicia uma conversa. (#7281)
+- Anúncio automático das notificações do Microsoft Edge, tais como quando começa um download.  (#7281)
+- Já pode escrever Braille abreviado usando o teclado Braille da sua linha Braille. Para mais informações, por favor, leia a secção correspondente do Manual do utilizador. (#2439)
+- Já pode introduzir caracteres Braille Unicode, a partir do teclado Braille da linha Braille, seleccionando a tabela Braille Unicode como tabela de escrita na janela Definições do Braille. (#6449)
+- Adicionado suporte para a linha Braille SuperBraille usada em Taiwan. (#7352)
+- Novas tabelas Braille: Dinamarquês Braille informático 8 pontos, Lituano, Persa Braille informático 8 pontos, Persa grau 1, Esloveno Braille informático 8 pontos. (#6188, #6550, #6773, #7367)
+- Melhorada a tabela Inglês (Estados Unidos) Braille informático 8 pontos, incluindo suporte para bullets, símbolo do Euro e letras acentuadas. (#6836)
+- O NVDA já pode usar a funcionalidade de OCR incluida no Windows 10 Creator para reconhecer texto em imagens ou em aplicações não acessíveis. (#7361)
+ - O idioma de reconhecimento pode ser configurado pela nova opção do menu Preferências, Windows 10 OCR;
+ - Para reconhecer o conteúdo do objeto de navegação actual, pressione NVDA+R;
+ - Para mais informações, por favor, leia a nova secção sobre esta funcionalidade no Manual do utilizador.
+- Já pode escolher a informação contextual que é mostrada na linha Braille quando um objecto recebe o foco, usando o novo parâmetro "Apresentação do contexto do foco", na janela de  Definições do Braille. (#217)
+ - Por exemplo, as opções "Mostrar máximo de alterações de contexto" e "Mostrar apenas informação de contexto ao deslocar a linha para a esquerda", tornam a leitura de listas e menus mais eficientes, já que os itens não mudarão de posição na linha Braille.
+ - Para mais informações, por favor, leia a nova secção sobre esta funcionalidade no Manual do utilizador.
+- No Firefox e Chrome, o NVDA agora suporta grelhas dinâmicas complexas, tais como folhas de cálculo onde apenas algum do conteúdo é mostrado, mais concretamente com atributos aria-rowcount, aria-colcount, aria-rowindex e aria-colindex, introduzidos em ARIA 1.1). (#7410)
+
+
+== Alterações ==
+- Um comando, sem tecla associada (script_restart), foi adicionado para permitir o reinício do NVDA. (#6396)
+- O Esquema de teclado a utilizar pode agora ser definido na janela Bem vindo ao NVDA. (#6863)
+- Os nomes das marcas são abreviados em Braille como se segue: (#3975)
+ - "landmark": "mrc"
+ - "banner": "bnr"
+ - "complementary": "cmp"
+ - "contentinfo": "inf"
+ - "main": "pri"
+ - "navigation": "nav"
+ - "search": "psq"
+ - "form": "frm"
+ - "region": "reg"
+ - Exemplo: Marca de navegação ficará "mrc nav"
+- Actualizado o eSpeak NG para a versão 1.49.1. (#7280)
+- As listas das tabelas Braille, de leitura e de escrita, na janela de Definições do Braille passaram a ser ordenadas alfabeticamente. (#6113)
+- Actualizado o liblouis braille translator para a  versão 3.2.0. (#6935)
+- A tabela Braille predefinida passa a ser a Código Braille Unificado Inglês grau 1. (#6952)
+- Por padrão, o NVDA passa a mostrar, na linha Braille, apenas a parte da informação contextual alterada quando um objecto recebe o foco. (#217)
+ - Antes, mostrava o máximo possível de informação contextual, independentemente dessa informação já ter sido mostrada ou não;
+ - Pode voltar ao comportamento anterior, alterando o novo parâmetro "Apresentação do contexto do foco", na janela de Definições do Braille, para ocupar toda a linha.
+- Se usa Braille, o aspecto do cursor pode ser configurado para ser diferente quando segue o "foco" ou quando segue o "Cursor de revisão". (#7112)
+- Actualizado o logotipo do NVDA. (#7446)
+
+
+== Correções ==
+- os elementos div editáveis no Chrome já não têm a sua etiqueta anunciada como se fosse o conteúdo em modo de navegação. (#7153)
+- Pressionar end em modo de navegação num documento vazio do Microsoft Word já não provoca um erro de runtime. (#7009)
+- O modo de navegação é agora correctamente suportado no Microsoft Edge quando um documento tenha um ARIA role de documento. (#6998)
+- Em modo de navegação, já pode seleccionar ou desseleccionar até ao fim da linha, usando Shift+End, mesmo que o cursor esteja no último caracter da linha. (#7157)
+- Se uma janela contiver uma barra de progresso, o texto da janela passa a ser actualizado em Braille, quando a mesma é alterada. Isto significa, por exemplo, que o tempo restante pode agora ser lido em Braille na janela de download da actualização do NVDA. (#6862)
+- O NVDA passa a anunciar as mudanças de selecção para certas caixas combinadas do Windows 10, tais como AutoPlay em Definições. (#6337).
+- Já não é anunciada informação desnecessária ao entrar na janela de criação de eventos/reuniões no Microsoft Outlook. (#7216)
+- Só serão emitidos bips para barras de progressão indeterminadas, como as da janela de download das actualizações do NVDA, se a configuração do "Anúncio da barra de progresso" incluir os bips. (#6759)
+- No Microsoft Excel 2003 e 2007, as células são novamente anunciadas ao navegar uma folha de cálculo com as setas. (#7243)
+- No Windows 10 Creators Update e seguintes o modo navegação é novamente ativado automaticamente ao ler uma mensagem no Correio do Windows 10. (#7289)
+- Na maioria das linhas Braille com teclado Braille, o ponto 7 apaga o último caracter digitado e o ponto 8 simula o pressionar do Enter. (#6054)
+- Num texto editável, quando movemos o cursor de inserção, por exemplo com as setas ou Backspace, o que é anunciado pelo NVDA será mais preciso, particularmente no Chrome e em aplicações tipo terminal. (#6424)
+- O conteúdo do Editor de assinaturas no Microsoft Outlook 2016 já é lido. (#7253)
+- Em aplicações Java Swing, o NVDA já não provoca ocasionais crashes ao navegar por tabelas. (#6992)
+- No Windows 10 Creators Update, o NVDA já não repetirá o anúncio das notificações toast. (#7128)
+- No menu Iniciar do Windows 10, ao pressionar Enter para o fechar após uma pesquisa, o NVDA já não anunciará o texto da pesquisa. (#7370)
+- A navegação por títulos no no Microsoft Edge é agora significativamente mais rápida. (#7343)
+- No Microsoft Edge, navegar em moddo de navegação já não salta partes do texto de certas páginas, como as  do tema 2015 do Wordpress. (#7143)
+- No Microsoft Edge, as marcas passam a ser anunciadas correctamente no idioma do Windows. (#7328)
+- O Braille segue correctamente a selecção de texto mesmo quando é ultrapassada a dimensão da linha Braille. Por exemplo, se seleccionar várias linhas com Shift+Seta abaixo, o braille agora mostra a última linha seleccionada. (#5770)
+- No Firefox, o NVDA já não anuncia, erroneamente, várias vezes "Secção" ao abrir os detalhes de um tweet no twitter.com. (#5741)
+- No Modo de navegação, os comandos  de navegação em tabelas passam a só estar disponíveis em tabelas de formatação se o seu anúncio estiver activado. (#7382)
+- No Firefox e Chrome, no Modo de navegação, os comandos  de navegação em tabelas passam a ignorar as células ocultas. (#6652, #5655)
+
+
+== Alterações para desenvolvedores ==
+- Timestamps in the log now include milliseconds. (#7163)
+- NVDA must now be built with Visual Studio Community 2015. Visual Studio Express is no longer supported. (#7110)
+ - The Windows 10 Tools and SDK are now also required, which can be enabled when installing Visual Studio.
+ - See the Installed Dependencies section of the readme for additional details.
+- Support for content recognizers such as OCR and image description tools can be easily implemented using the new contentRecog package. (#7361)
+- The Python json package is now included in NVDA binary builds. (#3050)
+
+
+= 2017.2 =
+Os destaques desta versão são:
+- Suporte total à diminuição de volume no Windows 10 Creators Update;
+- Correcções diversas a problemas de selecção em páginas Web, no modo de navegação, incluindo Seleccionar tudo;
+- Melhorias significativas no suporte ao Microsoft Edge;
+- Melhoramentos no suporte a páginas Web, tais como indicação de elementos marcados como atual (usando aria-current).
+-
+
+== Novas Funcionalidades ==
+- Informações sobre as linhas de grelha das células passam a poder ser anunciadas no Microsoft Excel, usando NVDA + f. (#3044)
+- Adicionado suporte para "Aria-current attributes". (#6358)
+- Adicionado suporte à mudança automática de idiomas no Microsoft Edge. (#6852)
+- Adicionado suporte à Calculadora do Windows 10 Enterprise LTSB (Long-Term Servicing Branch) e Server. (#6914)
+- Ao executar, três vezes rapidamente, o comando "Anunciar linha do objecto de navegação, 8 do numérico, a linha é soletrada com descrição dos caracteres. (#6893)
+- Novo idioma: Birmanês.
+- Os caracteres Unicode Seta acima e abaixo e símbolos de fracções passam a ser anunciados correctamente. (#3805)
+
+
+== Alterações ==
+- Ao navegar por aplicações, com UI Automation,, usando a navegação simples, mais controlos sem conteúdo são ignorados, tornando a navegação mais fácil. (#6948, #6950) 
+
+
+== Correcções ==
+- Itens de menu (como caixas de verificação e botões de opção) em páginas Web já podem ser activados no modo de navegação. (#6735)
+- O anúncio do nome de folhas do Excel já se encontra traduzido. (#6848)
+- Pressionar Escape na janela para confirmação de eliminação de um perfil activo passa a fechar a janela. (#6851)
+- Corrigidos alguns travamentos no Mozilla Firefox e outras aplicações baseadas em Gecko nas quais o multi-processamento esteja activado. (#6885)
+- O anúncio das cores de fundo na revisão de ecrã está mais eficaz quando o texto é desenhado sobre um fundo transparente. (#6467) 
+- Melhorado o suporte para aria-describedby no Internet Explorer 11, incluindo suporte em iframes e quando múltiplos IDs são fornecidos. (#5784)
+- Na versão Creators Update do Windows 10, a diminuição do volume do NVDA já funciona como nas versões anteriores do Windows (I.e. Dininuir com voz e sons, diminuir sempre e não dininuir estão disponíveis). (#6933)
+- O NVDA já não falha ao navegar para, ou a anunciar, certos controlos (UIA) sem atalho de teclado. (#6779)
+- Já não são adicionados dois espaços na informação de atalhos de teclado para certos controlos (UIA). (#6790)
+- Certas combinações de teclas nas linhas da HIMS (por exemplo, espaço+ponto4) já não falham intermitentemente. (#3157)
+- Resolvido um problema ao abrir uma porta série, em sistemas, em alguns idiomas diferentes do inglês, que causavam problemas, em certos casos, falhas na ligação a dispositivos Braille. (#6845)
+- Reduzidas as hipóteses de corrupção do ficheiro de configurações quando o Windows é desligado. O ficheiro de configurações é agora escrito para um ficheiro temporário antes de substituir o ficheiro corrente de configurações. (#3165)
+- Ao pressionar duas vezes o comando para ler a linha actual, a soletração já é feita usando o idioma correcto. (#6726)
+- Navegar por linha no Microsoft Edge é agora até três vezes mais rápidono Windows 10 Creators Update. (#6994)
+- O NVDA já não anuncia "Web Runtime grouping" ao focar documentos do Microsoft Edge no Windows 10 Creators Update (#6948)
+- Todas as versões do SecureCRT passam a ser suportadas. (#6302)
+- O Adobe Acrobat Reader já não cracha em certos documentos PDF ( mais concretamente nos que contém o atributo ActualText vazio). (#7021, #7034)
+- No Microsoft Edge, em modo de navegação, as tabelas interactivas (ARIA grids) já não são ignoradas ao navegar para tabelas com "T" e "shift+T". (#6977)
+- No modo de navegação, pressionando "Shift+Home" após ter seleccionado para a frente, agora desselecciona até ao princípio da linha como seria de esperar. (#5746)
+- No modo de navegação, pressionando Control+T (para seleccionar tudo) já não falha quando o cursor não está no início do texto. (#6909)
+- Corrigidos outros raros problemas em modo de navegação. (#7131)
+
+
+== Alterações para desenvolvedores ==
+- Commandline arguments are now processed with Python's argparser module, rather than optparser. This allows certain options such as -r and -q to be handled exclusively. (#6865)
+- core.callLater now queues the callback to NVDA's main queue after the given delay, rather than waking the core and executing it directly. This stops possible freezes due to the  core accidentally going to sleep after processing a callback, in the midle of  a modal call such as the desplaying of a message box. (#6797)
+- The InputGesture.identifiers property has been changed so that it is no longer normalized. (#6945)
+ - Subclasses no longer need to normalize identifiers before returning them from this property.
+ - If you want normalized identifiers, there is now an InputGesture.normalizedIdentifiers property which normalizes the identifiers returned by the identifiers property .
+- The InputGesture.logIdentifier property is now deprecated. Callers should use InputGesture.identifiers[0] instead. (#6945)
+- Deprecated code removed:
+ - `speech.REASON_*` constants, `controlTypes.REASON_*` should be used instead. (#6846)
+ - `i18nName` for synth settings, `displayName` and `displayNameWithAccelerator` should be used instead. (#6846, #5185)
+ - `config.validateConfig`. (#6846, #667)
+ - `config.save`. (#6846)
+- The list of completions in the autocomplete context menu of the Python Console no longer shows  any object path leading up to the final symbol being completed. (#7023)
+- There is now a unit testing framework for NVDA. (#7026)
+ - Unit tests and infrastructure are located in the tests/unit directory. See the docstring in the tests\unit\__init__.py file for details.
+ - You can run tests using "scons tests". See the "Running Tests" section of readme.md for details.
+ - If you are submitting a pull request for NVDA, you should first run the tests and ensure they pass.
+
+
+= 2017.1 =
+Os destaques desta versão são:
+- Anúncio de secções e colunas no Microsoft Word;
+- Suporte à leitura, navegação e anotações em livros no Kindle for PC;
+- Suporte melhorado ao Microsoft Edge.
+
+
+== Novas Funcionalidades ==
+- No Microsoft Word o tipo de quebra de secção e o número da secção passam a poder ser anunciados. Esta opção é activada juntamente com o anúncio do número de página no diálogo Formatação de documentos do NVDA. (#5946)
+- No Microsoft Word as colunas de texto passam a poder ser anunciadas. Esta opção é activada juntamente com o anúncio do número de página no diálogo Formatação de documentos do NVDA. (#5946)
+- A mudança automática de idioma passa a ser suportada no Wordpad. (#6555)
+- O comando Localizar do NVDA (NVDA+control+f) já é suportado no modo de navegação no Microsoft Edge. (#6580)
+- Os comandos de navegação rápida para botões, no modo de navegação, (b e shift+b) passam a ser suportados no Microsoft Edge. (#6577)
+- Ao copiar uma folha no Microsoft Excel, os cabeçalhos de linhas e colunas são também copiados. (#6628)
+- Suporte para ler e navegar livros na versão 1.19 para PC do Kindle, incluindo acesso a links, notas de rodapé, gráficos, texto realçado e notas do utilizador. Por favor, consulte a secção sobre o Kindle para PC do Manual do utilizador para mais informações. (#6247, #6638)
+- A navegação em tabelas no modo de navegação  já é suportada no Microsoft Edge. (#6594)
+- No Microsoft Excel, o comando Anunciar localização do cursor de revisão (desktop: NVDA+Delete do numérico, laptop: NVDA+delete) passa a anunciar o nome da folha e a localização da célula. (#6613)
+- Adicionada uma opção ao diálogo de encerramento do NVDA para reiniciar com o nível de registo definido para Depuração. (#6689)
+
+
+== Alterações ==
+- O valor mínimo para a intermitência do cursor braille é agora 200 ms. Perfis ou configurações com valores inferiores serão alterados para este novo mínimo. (#6470)
+- Foi adicionada, no diálogo Definições do Braille, uma caixa de verificação para poder desligar a intermitência do cursor Braille. Esta opção era antes activada colocando a intermitência do cursor Braille a 0. (#6470)
+- Actualizado o eSpeak NG (commit e095f008, 10 de Janeiro de 2017). (#6717)
+- Devido a alterações no Windows 10 Creators Update, que quebraram esta funcionalidade, a opção Diminuir sempre foi removida do Modo  de diminuição do volume do NVDA. Ainda está disponível em versões anteriores do windows 10. (#6684)
+- Devido a alterações no Windows 10 Creators Update, que quebraram esta funcionalidade, a opção Diminuir quando a emitir voz ou sons já não pode assegurar que o som foi silenciado antes de começar a falar, nem que o áudio fica desligado depois de terminar. Estas alterações não afectam versões anteriores do windows 10. (#6684)
+
+
+== Correcções ==
+- Corrigida a paragem no Microsoft Word ao mover por parágrafo no modo de navegação num documento grande. (#6368)
+- As tabelas copiadas do Microsoft Excel  para o Microsoft Word já não são consideradas como tabelas de formatação e, por isso, já não são ignoradas. (#5927)
+- Ao tentar escrever na vista protegida do Microsoft Excel, o NVDA passa a fazer um bip em vez de ecoar as letras que, na realidade, não são escritas. (#6570)
+- Pressionar escape no Microsoft Excel já não muda, incorrectamente, para modo de navegação, a menos que o utilizador tenha antes mudado para esse modo, com NVDA+Espaço, e depois tenha mudado para o modo normal ao pressionar enter num campo de formulário. (#6569) 
+- O NVDA já não apresenta paragens no Microsoft Excel, quando numa folha, uma linha ou coluna inteira está unida. (#6216)
+- O anúncio de texto cortado ou em sobreposição, nas células do Microsoft Excel, está mais preciso. (#6472)
+- O NVDA passa a anunciar quando uma caixa de verificação é apenas de leitura. (#6563)
+- Ao iniciar o NVDA, já não é mostrado um aviso  quando não é possível emitir sons por falta de um dispositivo de áudio. (#6289)
+- Nos frisos do Microsoft Excel os controlos indisponíveis passam agora a ser anunciados como tal. (#6430)
+- O NVDA já não anunciará "painel" ao minimizar janelas. (#6671)
+- Os caracteres digitados já são falados nas aplicações Universal Windows Platform (UWP) (incluindo Microsoft Edge) no Windows 10 Creators Update. (#6017)
+- O acompanhamento do rato já funciona em todos os ecrãs em computadores com múltiplos ecrãs. (#6598)
+- O NVDA já não fica inusável depois de sair do Windows Media Player quando focado numa barra deslizante. (#5467)
+ 
+
+== Alterações para desenvolvedores ==
+- Os ficheiros de Perfis e configurações serão automaticamente actualizados para acomodar as alterações ao esquema de intermitência do cursor Braille. Se houver um erro na actualização, uma notificaçãon será mostrada e a  configuração será feita por padrão,, ficando a configuração antiga disponível no ficheiro de log do NVDA. (#6470)
+
+
+= 2016.4 =
+Os destaques desta versão são:
+- Suporte melhorado ao Microsoft Edge;
+- Modo de navegação no programa Correio do Windows 10;
+- Melhorias várias nos diálogos do NVDA.
+
+== Novas Funcionalidades ==
+- O NVDA pode agora anunciar a identação das linhas usando sons. Isto pode ser configurado através da caixa combinada Anúnncio da identação das linhas no diálogo de Formatação de documentos das preferências do NVDA. (#5906)
+- Foi adicionada uma opção para abrir o Visualizador de discurso no arranque. Esta opção pode ser activada através de uma caixa de verificação na janela do Visualizador de discurso. (#5050)
+- Ao reabrir a janela do Visualizador de discurso, a sua localização e dimensão serão restauradas. (#5050)
+- As Referências cruzadas no Microsoft Word passam a ser tratadas como Links. Serão anunciadas como links e podem ser activadas. (#6102)
+- Suporte para a linha Braille  Orbit Reader 20. (#6007)
+- Suporte para as linhas Braille Baum SuperVario2, Baum Vario 340 e HumanWare Brailliant2. (#6116)
+- Suporte inicial para a versão Aniversário do Microsoft Edge. (#6271)
+- O modo de navegação passa a ser usado ao ler e-mails no correio do Windows 10. (#6271)
+
+
+== Alterações ==
+- Actualizado o liblouis braille translator para a versão 3.0.0. Isto inclui melhorias significativas no Unified English Braille. (#6109, #4194, #6220, #6140)
+- No Gestor de Extras, os botões Desactivar Extra e Activar Extra já possuem tecla de atalho, (alt+d e alt+e, respectivamente. (#6388)
+- No diálogo do Gestor de extras diversos problemas de alinhamento e de aspecto foram resolvidos. (#6317, #5548, #6342, #6343, #6349)
+- O diálogo de Formatação de documentos foi ajustado para que o conteúdo  possa rolar. (#6348)
+- Ajustado o layout do diálogo Pronúncia de pontuação/símbolo, para que toda a sua largura possa ser usada pela lista de símbolos. (#6101)
+- No modo de navegação, nos navegadores web, as teclas de navegação rápida, para campos de edição (e e shift+e) e de formulário (f e shift+f) agora também movem para campos de texto só de leitura. (#4164)
+- Ajustada a aparência do diálogo de boas vindas ao NVDA. (#6350)
+- Os diálogos do NVDA passam a ter os botões "ok" e "cancelar" alinhados à direita. (#6333)
+- Passam a ser usadas barras deslizantes para os campos numéricos. (#6099)
+- Amaneira como são reportadas as IFrames (documentos integrados em documentos) é agora mais consistente nos vários navegadores web. As IFrames passam a ser reportadas como "frame" no Firefox. (#6047)
+
+
+== Correcções ==
+- Corrigido um problema raro, ao sair do NVDA enquanto o visualizador de discurso está aberto, causando um erro. (#5050)
+- Os "Image maps" são agora apresentados correctamente no modo de navegação no Mozilla Firefox. (#6051)
+- Corrigido um problema que causava um aviso no log do NVDA, quando se alternava o estado do capsLock. (#6127)
+- No diálogo dos dicionários, ao pressionar enter agora guarda as alterações e sai. (#6206)
+- Passam a ser mostradas em Braille as mensagens de alteração do modo de introdução para um modo de introdução (nativo, input/alphanumeric, full shaped/half shaped, etc.). (#5892, #5893)
+- Ao desabilitar, e imediatamente voltar a habilitar, um extra, ou vice-versa, o seu estado agora corretamente reverte para o que era anteriormente. (#6299)
+- Ao utilizar o Microsoft Word, os campos de número de página nos cabeçalhos já podem ser lidos. (#6004)
+- O rato agora pode ser usado para mover o foco entre a lista de símbolos e os campos de edição no diálogo de Pronúncia de pontuação/símbolo. (#6312)
+- Corrigido um problema que impedia o aparecimento da lista de elementos quando o documento do Microsoft Word contém um link inválido. (#5886)
+- Após fechar o Visualizador de discurso, através da barra de tarefas ou com Alt+F4, a indicação do seu estado no menu do NVDA passa a reflectir a realidade da sua visibilidade. (#6340)
+- O comando Recarregar extras não causa mais problemas para os perfis de configuração activados, para os novos documentos em navegadores web nem para a revisão de ecrã. (#2892, #5380)
+- Na lista de idiomas no diálogo Definições gerais do NVDA, idiomas como o Aragonês passam a ser exibidos correctamente no Windows 10. (#6259)
+- As teclas de sistema emuladas por teclas de uma linha Braille, por exemplo, uma tecla simulando o Tab, passam a ser apresentadas no idioma do NVDA na Ajuda de entrada e no diálogo Definir Comandos. Antes eram sempre apresentadas em inglês. (#6212)
+- Alterar o idioma do NVDA a parttir das Definições Gerais apenas tem efeito após reiniciar o NVDA. (#4561)
+- O campo Texto original de uma nova entrada de dicionário já não pode ficar em branco. (#6412)
+- Corrigido um problema raro, ao pesquisar por portas série em alguns sistemas que impossibilitava o uso de algumas linhas Braille. (#6462)
+- No Microsoft Word, a numeração das listas em células de tabelas são agora lidos ao mover por células. (#6446)
+- Passa a ser possível associar comandos ao pressionar de teclas das linhas Braille HandyTech através da opção Definir comandos do NVDA. (#6461)
+- No Microsoft Excel, ao pressionar enter, ao navegar numa folha, agora é corretamente anunciada a mudança para a linha de baixo. (#6500)
+- O iTunes já não crasha intermitentemente ao usar o modo de navegação para a iTunes Store, Apple Music, etc. (#6502)
+- Corrigidos crashes em applicações de 64 bit baseadas em Mozilla ou Chrome. (#6497)
+- No Firefox com o multi-process activo, o modo de navegação e os campos de edição já funcionam corretamente. (#6380)
+
+
+== Alterações para desenvolvedores ==
+- Já é possível criar appModules para executáveis que contenham um ponto (.) no seu nome. Os pontos serão substituidos por sublinhados (_). (#5323)
+- O novo módulo gui.guiHelper inclui utilitários para simplificar a criação de GUI's do wxPython, incluindo gestão automática do espaçamento, o que facilita a apresentação dum melhor visual e mais consistência, e também facilita a criação de novas GUIs por desenvolvedores cegos. (#6287)
+
+
+= 2016.3 =
+Os destaques desta versão incluem:
+- Possibilidade de desactivar Extras  individualmente;
+- Suporte para campos de formulário no Microsoft Excel;
+- Melhorias significativas no anúncio de cores;
+- Correções e melhorias relacionadas com várias linhas Braille;
+- Correções e melhorias no suporte ao Microsoft Word.
+-
+
+
+== Novas Funcionalidades ==
+- O modo de navegação passou a poder ser usado para ler documentos PDF no Microsoft Edge. (#5740)
+- O Rasurado e o Rasurado duplo passam a ser reportados quando apropriado no Microsoft Word. (#5800)
+- No Microsoft Word, o título duma tabela passa a ser anunciado, se tiver sido definido. Se houver uma descrição, pode ser acedida usando o comando Abrir descrição longa (NVDA+d) no Modo de navegação. (#5943)
+- No Microsoft Word, o NVDA agora anuncia informações de posição ao mover-se por parágrafos (alt+shift+seta abaixo e alt+shift+seta acima). (#5945)
+- No Microsoft Word, o espaçamento das linhas passa a ser anunciado através do comando NVDA+F, Anunciar formatação de texto, quando for alterado por um comando do Word e quando nos movermos entre texto com diferentes níveis de espaçamento, se o Anunciar espaçamento de linhas estiver marcado na Formatação de documentos do NVDA. (#2961)
+- No Internet Explorer, os elementos estruturais do HTML5 passam a ser reconhecidos. (#5591)
+- O anúncio de comentários no Microsoft Word) pode ser desativado através da caixa de verificação Anunciar Comentários na Formatação de documentos do NVDA. (#5108)
+- Através do Gestor de Extras é agora possível desativar um Extra específico. (#3090)
+- Foram adicionados mais comandos para as linhas da série ALVA BC640/680. (#5206)
+- Foi criado um comando para mover a linha Braille para o foco actual. Actualmente, apenas as linhas das séries ALVA BC640/680 têm uma tecla associada a este comando, mas a associação pode ser feita manualmente para qualquer linha através da opção Comandos. (#5250)
+- No Microsoft Excel, já é possível interagir com Campos de formulário. Pode mover-se pelos campos de formulário usando a Lista de elementos ou, em Modo de navegação, a navegação por caracter. (#4953)
+- Já é possível associar um comando para alternar o Modo de revisão simples usando a opção Definir comandos. (#6173)
+
+
+== Alterações ==
+- O NVDA passa a anunciar as cores usando um conjunto básico, bem reconhecível e entendível, de 9 cores e 3 graus de claridade. Os desenvolvedores pensam que é melhor que muitos nomes de cores difilmente reconhecíveis por quem nunca viu. (#6029)
+- O comportamento de NVDA+F9 seguido de NVDA+F10 foi modificado para seleccionar texto com o primeiro pressionar de NVDA+F10. Quando NVDA+F10 é pressionado duas vezes rapidamente, o texto é copiado para a área de transferência. (#4636)
+- Actualizado o eSpeakNG para a versão Master 11b1a7b (22 June 2016). (#6037)
+
+
+== Correcção de falhas ==
+- No Modo de navegação no Microsoft Word, o copiar para a área de transferência passa a preservar a formatação. (#5956)
+- No Microsoft Word, o NVDA passa a anunciar correctamente os comandos de navegação em tabelas (alt+home, alt+end, alt+pageUp e alt+pageDown) e de selecção em tabelas (adicionamdo shift aos comandos de navegação). (#5961)
+- Nos diálogos do Microsoft Word a navegação por objectos do  NVDA foi bastante melhorada. (#6036)
+- Em algumas aplicações como o Visual Studio 2015, as teclas de atalho (como control+c para Copiar) passam a ser anunciadas como seria esperado. (#6021)
+- Corrigida uma eventual falha ao pesquisar por portas série, em alguns sistemas, que tornava os drivers das linhas Braille inutilizáveis. (#6015)
+- O anúncio de cores no Microsoft Word é agora mais certeiro, pois as alterações provocadas pelos temas do Microsoft Office são levadas em conta. (#5997)
+- O modo de navegação para o Microsoft Edge e o suporte às sugestões da pesquisa no Menu Iniciar está novamente disponível nas versões  do Windows 10 depois de Abril de 2016. (#5955)
+- No Microsoft Word, a leitura automática dos cabeçalhos da tabela, quando estes se encontram em células mescladas, funciona melhor. (#5926)
+- No Correio do Windows 10 o NVDA já não falha na leitura do conteúdo das mensagens. (#5635) 
+- Quando o "Anúncio de teclas de comando" está activado, CapsLock, NumLock e ScrollLock já não são anunciados em duplicado. (#5490)
+- Os diálogos do Controlo de Conta do Utilizador do Windows são novamente lidos correctamente na versão Aniversário do Windows 10. (#5942)
+- No Plugin Web Conference, como o que é usado no out-of-sight.net, o NVDA já não emite bips nem fala as barras de progressão relativas ao nível do microfone. (#5888)
+- Ao executar o Localizar seguinte ou Localizar anterior, no Modo de navegação, passa a ser respeitado o parâmtero Maiúsculas/minúsculas. (#5522)
+- Ao editar entradas no dicionário, é dado feedback sobre expressões regulares inválidas. O NVDA já não crasha se o dicionário contiver expressões regulares inválidas. (#4834)
+- Se o NVDA não conseguir comunicar com uma linha Braille (por exemplo,  por ter sido desligada), será automaticamente desactivado o uso da linha. (#1555)
+- Ligeiramente melhorada, em alguns casos, a performance da filtragem na Lista de elementos no Mode de navegação. (#6126)
+- No Microsoft Excel, os nomes dos fundos anunciados pelo NVDA passam a ser os mesmos que os usados pelo Excel. (#6092)
+- Suporte melhorado para o ecrã de início de sessão do Windows 10 incluindo o anúncio de alertas e activação do campo de introdução da palavra-passe com ecrã táctil. (#6010)
+- O NVDA passa a detectar correctamente a segunda fila de cursores de toque das linhas Braille das séries ALVA BC640/680. (#5206)
+- O NVDA volta a anunciar os toast, balões de notificações, nas versões mais recentes do Windows 10. (#6096)
+- O NVDA já não deixa de reconhecer o pressionar de teclas nas linhas Braille da Baum e da HumanWare Brailliant B. (#6035)
+- Se a opção Anunciar números de página estiver marcada, o os números de linha serão também anunciados em Braille. (#5941)
+- Quando o Modo de voz estiver desactivado, o anúncio de objectos (tal como pressionar NVDA+tab para anunciar o objecto em foco) a informação aparece no Visualizador de discurso como esperado. (#6049)
+- Na lista de mensagens do Outlook 2016, a informação sobre rascunhos associados já não é anunciada. (#6219)
+
+
+== Alterações para Desenvolvedores ==
+- Logging uma informação directamente duma propriedade já não resulta na propriedade ser chamada recursiva e infinitamente. (#6122)
+
+
+= 2016.2.1 =
+Esta versão corrige falhas no Microsoft Word:
+
+- O NVDA já não provoca falhas no Microsoft Word, assim que este é iniciado no Windows XP. (#6033)
+- Removido o anúncio de erros gramaticais, por provocar falhas no Microsoft Word. (#5954, #5877)
+
+
+= 2016.2 =
+Os destaques desta versão incluem a funcionalidade de anunciar os erros ortográficos, à medida que se escreve, e a possibilidade de reportar os erros gramaticais  no Microsoft Word, bem como várias melhorias e correcções  no suporte ao Microsoft Office.
+
+== Novas Funcionalidades ==
+- No modo de navegação no  Internet Explorer e outros controlos MSHTML, usando a navegação por caracter, mover por anotações (a e shift+a) agora também move para texto inserido e apagado. (#5691)
+- No Microsoft Excel, o NVDA agora anuncia o nível de um grupo de células, bem como se estão expandidas ou recolhidas. (#5690)
+- Ao pressionar, duas vezes, o comando para anunciar a formatação do texto (NVDA+f), é apresentado um diálogo, em modo de navegação, com a informação de modo a poder ser revista. (#4908)
+- No Microsoft Excel 2010 e seguintes, o sombreado e o gradiente das células é agora anunciado. O anúncio automático é controlado pela opção Anunciar cores nas preferências do NVDA, Formatação de documentos. (#3683)
+- Nova tabela Braille: Grego Koine. (#5393)
+- No Visualizador de registo é agora possível gravar o documento usando o comando Control+s. (#4532)
+- Se o anúncio de erros ortográficos estiver activado, e se for suportado pelo campo de edição em uso, o NVDA reproduzirá um som para alertar de um erro ortográfico cometido ao escrever. Isto pode ser desactivado com a nova opção "Tocar som para erros ortográficos ao escrever" nas Opções de Teclado do  NVDA. (#2024)
+- Os erros gramaticais são agora anunciados no Microsoft Word. Isto pode ser desactivado na nova opção "Anunciar erros gramaticais" na Formatação de documentos das preferências do NVDA. (#5877)
+
+
+== Alterações ==
+- O NVDA mudou para o sintetizador eSpeak NG. (#5651)
+- In browse mode and editable text fields, NVDA now treats numpadEnter the same as the main enter key. (#5385)
+- In Microsoft Excel, NVDA no longer ignores a column header for a cell when there is a blank row between the cell and the header. (#5396)
+- In Microsoft Excel, coordinates are now announced before headers to eliminate ambiguity between headers and content. (#5396)
+
+
+== Correcção de falhas ==
+- In browse mode, when attempting to use single letter navigation to move to an element which isn't supported for the document, NVDA reports that this isn't supported rather than reporting that there is no element in that direction. (#5691)
+- When listing sheets in the Elements List in Microsoft Excel, sheets containing only charts are now included. (#5698)
+- NVDA no longer reports extraneous information when switching windows in a Java application with multiple windows such as IntelliJ or Android Studio. (#5732)
+- In Scintilla based editors such as Notepad++, braille is now updated correctly when moving the cursor using a braille display. (#5678)
+- NVDA no longer sometimes crashes when enabling braille output. (#4457)
+- In Microsoft Word, paragraph indentation is now always reported in the measurement unit chosen by the user (e.g. centimeters or inches). (#5804)
+- When using a braille display, many NVDA messages that were previously only spoken are now brailled as well. (#5557)
+- In accessible Java applications, the level of tree view items is now reported. (#5766)
+- Fixed crashes in Adobe Flash in Mozilla Firefox in some cases. (#5367)
+- In Google Chrome and Chrome-based browsers, documents within dialogs or applications can now be read in browse mode. (#5818)
+- In Google Chrome and Chrome-based browsers, you can now force NVDA to switch to browse mode in web dialogs or applications. (#5818)
+- In Internet Explorer and other MSHTML controls, moving focus to certain controls (specifically, where aria-activedescendant is used) no longer incorrectly switches to browse mode. This occurred, for example, when moving to suggestions in address fields when composing a message in Gmail. (#5676)
+- In Microsoft Word, NVDA no longer freezes in large tables when reporting of table row/column headers is enabled. (#5878)
+- In Microsoft word, NVDA no longer incorrectly reports text with an outline level (but not a built-in heading style) as a heading. (#5186)
+- In browse mode in Microsoft Word, the Move past end/to start of container commands (comma and shift+comma) now work for tables. (#5883)
+
+
+== Alterações para Desenvolvedores ==
+- NVDA's C++ components are now built with Microsoft Visual Studio 2015. (#5592)
+- You can now present a text or HTML message to the user in browse mode using ui.browseableMessage. (#4908)
+- In the User Guide, when a %kc:setting command is used for a setting which has a common key for all layouts, the key may now be placed after a full-width colon (：) as well as the regular colon (:). (#5739)
+
 
 = 2016.1 =
+Os destaques desta versão são a possibilidade do NVDA, opcionalmente, baixar o volume do som de outros programas, melhorias na apresentação da saída em Braille e  no suporte a algumas linhas Braille, várias correções significativas no suporte ao Microsoft Office e correções no modo de navegação no iTunes.
 
 == Novas Funcionalidades ==
 - Novas tabelas de conversão Braille: Polaco Braille informático 8 pontos e Mongol. (#5537, #5574)
@@ -42,6 +1911,15 @@ Tradução de Rui Fontes, a partir da versão 2015.1, adaptação por Rui Batist
 - O anúncio da alteração da forma do rato voltou a funcionar como devido. (#5595)
 - Ao anunciar a indentação da linha, os espaços não separáveis são tratados como espaços normais. Antes, isto podia causar anúncios como "espaço espaço espaço" em vez de "3 espaços". (#5610)
 - Ao fechar uma lista de candidatos modern Microsoft input method, o foco é correctamente restaurado para a janela de composição ou para o documento. (#4145)
+- No Microsoft Office 2013 e superiores, quando os frisos estão configurados para mostrar apenas tabs,os  itens dos frisos são novamente anunciados, como devido, quando algum tab é activado. (#5504)
+- Correções e melhorias na deteção de toques no ecrã e suas associações. (#5652)
+- O gesto de deslizar deixou de ser mencionado na ajuda. (#5652)
+- O NVDA já não falha ao listar comentários na Lista de Elementos para o Microsoft Excel, mesmo que um comentário esteja numa célula mesclada. (#5704)
+- O NVDA já não falha ao ler o conteúdode uma folha do Microsoft Excel com a opção "Anunciar títulos da linha/coluna da tabela" activada. (#5705)
+- No Google Chrome, ao navigar dentro de uma área de composição, introduzindo caracteres do Extremo Oriente, o NVDA funciona como esperado. (#4080)
+- Quando se pesquisa dentro da Apple Music no iTunes, o modo de navegação para o documento dos resultados já é actualizado devidamente. (#5659)
+- No Microsoft Excel, ao pressionar shift+f11 para criar uma nova folha, agora é anunciada a posição actual em vez de ficar calado.(#5689)
+- Corrigidos problemas com a saída de Braille ao introduzir caracteres Coreanos. (#5640)
 
 
 == Alterações para Desenvolvedores ==
@@ -54,6 +1932,14 @@ Tradução de Rui Fontes, a partir da versão 2015.1, adaptação por Rui Batist
  - hwIo.Serial estende pyserial para chamar um chamável quando são recebiddos dados em vez de o driver ter de os captar.
  - hwIo.Hid suporta que as linhas Braille comuniquem via USB HID.
  - hwPortUtils e hwIo podem, opcionalmente, proporcionar logs detalhados incluindo dispositivos encontrados e todos os dados recebidos e enviados.
+- Acessíveis várias novas propriedades para comandos de toque: (#5652)
+ - os objectos MultitouchTracker contêm uma propriedade  childTrackers que contêm o MultiTouchTrackers que engloba os vários trackers que o compôem. Por exemplo, toque duplo com 2 dedos tem child trackers para Toque com 2 dedos. Toque com 2 dedos, por sua vez, tem child trackers para dois toques.
+ - Os objectos MultiTouchTracker também contêm uma propriedade rawSingleTouchTracker se o tracker for o resultado de um toque com um dedo, varrimento ou deslize. The SingleTouchTracker allows access to the underlying ID assigned to the finger by the operating system and whether or not the finger is still in contact at the current time.
+ - Os TouchInputGestures agora têm propriedades x e y, removendo a necessidade de aceder ao tracker para casos normais.
+ - Os TouchInputGesturs contêm uma propriedade preheldTracker, que é um objecto MultitouchTracker representando os outros dedos mantidos enquanto este comando é efectuado.
+- Podem ser feitos dois novos comandos de toque: (#5652)
+ - Tocar e manter mútiplo (e.g. toque duplo e manter)
+ - Um identificador generalizado com a contagem de dedos removida para quando se mantém os dedos (e.g. hold+hover para 1finger_hold+hover).
 
 
 = 2015.4 =
@@ -841,7 +2727,7 @@ Alguns itens ou termos desta seção não serão traduzidos, uma vez que são de
  - Recurso suportado tanto pelo próprio NVDA como por seus complementos. 
  - xgettext and msgfmt from GNU gettext must be used to create any PO and MO files. The Python tools do not support message contexts. 
  - For xgettext, pass the --keyword=pgettext:1c,2 command line argument to enable inclusion of message contexts. 
- - Consulte http://www.gnu.org/software/gettext/manual/html_node/Contexts.html#Contexts para mais informações. 
+ - Consulte https://www.gnu.org/software/gettext/manual/html_node/Contexts.html#Contexts para mais informações. 
 - It is now possible to access built-in NVDA modules where they have been overridden by third party modules. See the nvdaBuiltin module for details. 
 - Add-on translation support can now be used within the add-on installTasks module. (#2715) 
 
@@ -1498,7 +3384,7 @@ O mais destacável desta versão inclui o suporte para versões de 64 bit do Win
 - Backspace agora é controlado corretamente quando se fala palavras ao escrever. (#306)
 - Não se anuncia incorretamente "menu iniciar" para certos menus de contexto no Windows Explorer/Windows shell. (#257)
 - O NVDA agora processa corretamente etiquetas de ARIA no mozilla Gecko quando não há outro conteúdo útil. (#156)
-- O NVDA já não ativa incorretamente o modo de foco automaticamente para campos de texto editável que atualizam seu valor quando o foco muda; ex.: http://tigerdirect.com/. (#220)
+- O NVDA já não ativa incorretamente o modo de foco automaticamente para campos de texto editável que atualizam seu valor quando o foco muda; ex.: https://tigerdirect.com/. (#220)
 - O NVDA agora tentará recuperar-se de algumas situações que anteriormente o fariam travar completamente. Poderá levar cerca de 10 segundos para que o NVDA detecte e se recupere de tais travamentos.
 - quando o idioma do NVDA está configurado para "User default", utiliza o idioma do usuário do Windows configurado em lugar do local do Windows.
 - O NVDA agora reconhece a existência de controles em AIM 7.
@@ -1786,7 +3672,7 @@ O mais destacável desta versão inclui o suporte para versões de 64 bit do Win
 = 0.5 =
 - O NVDA ten agora um sintetizador integrado chammado eSpeak, desenvolvido por Jonathan Duddington. É muito ágil e rápido, e ten suporte para muitos idiomas diferentes. Os sintetizadores Sapi todavía podem ser usados, mas o eSpeak será utilizado por padrão.
  - O eSpeak não depende de nenhum software especial para ser instalado, pelo que pode ser utilizado com o NVDA em qualquer computador, nun dispositivo USB ou qualquer outro.
- - Para mais informações sobre o eSpeak, ou para encontrar outras versões, visite http://espeak.sourceforge.net/.
+ - Para mais informações sobre o eSpeak, ou para encontrar outras versões, visite https://espeak.sourceforge.net/.
 - Correção da falha onde era anunciado o caractere incorreto quando se pressionava Delete em painéis editáveis do Internet Explorer / Outlook Express.
 - adicionado suporte para mais campos de edição no Skype.
 - Os buffers virtuais agora só são carregados quando o foco está sobre a janela que necessita ser carregada. Isto resolve alguns problemas onde o painel anterior era ativado no Outlook Express.
@@ -1843,4 +3729,5 @@ O mais destacável desta versão inclui o suporte para versões de 64 bit do Win
 - O NVDA agora pergunta se deve salvar suas configurações e reiniciá-lo quando o usuário altera seu idioma através do Diálogo de Opções da Interface. Para que o novo idioma seja carregado, a configuração tem de ser salva e o NVDA reiniciado.
 - Quando um sintetizador não pode ser carregado ao ser escolhido a partir do Diálogo de Sintetizadores, uma caixa de diálogo agora avisa ao usuário desse fato.
 - Ao carregar um sintetizador pela primeira vez, o NVDA deixa que ele escolha os parâmetros mais adequados de voz, velocidade e tom, em lugar de forçá-lo a usar os padrões que este supõe estar adequados. Isso resolve um problema com os sintetizadores  Eloquence e Viavoice sapi4 que iniciavam a falar de forma excessivamente rápida para uma primeira vez.
+35230
 

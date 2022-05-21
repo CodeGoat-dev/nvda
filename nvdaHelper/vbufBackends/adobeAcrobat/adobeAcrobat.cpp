@@ -17,6 +17,7 @@ http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 #include <iomanip>
 #include <windows.h>
 #include <oleacc.h>
+#include <common/ia2utils.h>
 #include <remote/nvdaHelperRemote.h>
 #include <vbufBase/backend.h>
 #include <common/log.h>
@@ -34,7 +35,7 @@ IAccessible* IAccessibleFromIdentifier(int docHandle, int ID) {
 	IAccessible* pacc=NULL;
 	VARIANT varChild;
 	LOG_DEBUG(L"Calling AccessibleObjectFromEvent");
-	if((res=AccessibleObjectFromEvent((HWND)docHandle,OBJID_CLIENT,ID,&pacc,&varChild))!=S_OK) {
+	if((res=AccessibleObjectFromEvent((HWND)UlongToHandle(docHandle),OBJID_CLIENT,ID,&pacc,&varChild))!=S_OK) {
 		LOG_DEBUG(L"AccessibleObjectFromEvent returned "<<res);
 		return NULL;
 	}
@@ -417,6 +418,9 @@ AdobeAcrobatVBufStorage_controlFieldNode_t* AdobeAcrobatVBufBackend_t::fillVBuf(
 	}
 
 	IPDDomNode* domNode = getPDDomNode(varChild, servprov);
+	if (!domNode) {
+		LOG_DEBUGWARNING(L"Couldn't get IPDDomNode for docHandle " << docHandle << L" id " << ID);
+	}
 
 	IPDDomElement* domElement = NULL;
 	LOG_DEBUG(L"Trying to get IPDDomElement");
@@ -489,8 +493,9 @@ AdobeAcrobatVBufStorage_controlFieldNode_t* AdobeAcrobatVBufBackend_t::fillVBuf(
 	LOG_DEBUG(L"childCount is "<<childCount);
 
 	bool deletePageNum = false;
-	if (!pageNum && (pageNum = this->getPageNum(domNode)))
+	if (!pageNum && domNode && (pageNum = this->getPageNum(domNode))) {
 		deletePageNum = true;
+	}
 
 	#define addAttrsToTextNode(node) { \
 		node->addAttribute(L"language", parentNode->language); \
@@ -615,30 +620,22 @@ AdobeAcrobatVBufStorage_controlFieldNode_t* AdobeAcrobatVBufBackend_t::fillVBuf(
 
 	} else if (childCount > 0) {
 		// Iterate through the children.
-		LOG_DEBUG(L"Allocate memory to hold children");
-		VARIANT* varChildren;
-		if((varChildren=(VARIANT*)malloc(sizeof(VARIANT)*childCount))==NULL) {
-			LOG_DEBUG(L"Error allocating varChildren memory");
-			if (stdName)
-				SysFreeString(stdName);
-			return NULL;
-		}
 		LOG_DEBUG(L"Fetch children with AccessibleChildren");
-		if((res=AccessibleChildren(pacc,0,childCount,varChildren,(long*)(&childCount)))!=S_OK) {
-			LOG_DEBUG(L"AccessibleChildren returned "<<res);
+		auto[varChildren, accChildRes] = getAccessibleChildren(pacc, 0, childCount);
+		if(S_OK != accChildRes || varChildren.size() == 0) {
+			LOG_DEBUG(L"Failed to get AccessibleChildren (count: " << childCount << L"), res: " << accChildRes);
 			childCount=0;
 		}
-		LOG_DEBUG(L"got "<<childCount<<L" children");
-		for(int i=0;i<childCount;++i) {
-			LOG_DEBUG(L"child "<<i);
-			if(varChildren[i].vt==VT_DISPATCH) {
+		LOG_DEBUG(L"got "<< varChildren.size() << L" children");
+		for(auto i = 0u; i < varChildren.size(); ++i) {
+			LOG_DEBUG(L"child " << i);
+			if(VT_DISPATCH == varChildren[i].vt) {
 				LOG_DEBUG(L"QueryInterface dispatch child to IID_IAccesible");
-				IAccessible* childPacc=NULL;
-				if((res=varChildren[i].pdispVal->QueryInterface(IID_IAccessible,(void**)(&childPacc)))!=S_OK) {
-					LOG_DEBUG(L"varChildren["<<i<<L"].pdispVal->QueryInterface to IID_iAccessible returned "<<res);
-					childPacc=NULL;
+				CComQIPtr<IAccessible, &IID_IAccessible> childPacc(varChildren[i].pdispVal);
+				if(!childPacc) {
+					LOG_DEBUG(L"varChildren[" << i << L"]: QueryInterface to IID_iAccessible failed.");
 				}
-				if(childPacc) {
+				else {
 					if (this->isXFA) {
 						// HACK: If this is an XFA document, we must call WindowFromAccessibleObject() so that AccessibleObjectFromEvent() will work for this node.
 						HWND tempHwnd;
@@ -650,15 +647,9 @@ AdobeAcrobatVBufStorage_controlFieldNode_t* AdobeAcrobatVBufBackend_t::fillVBuf(
 					} else {
 						LOG_DEBUG(L"Error in calling fillVBuf");
 					}
-					LOG_DEBUG(L"releasing child IAccessible object");
-					childPacc->Release();
 				}
 			}
-			VariantClear(&(varChildren[i]));
 		}
-		LOG_DEBUG(L"Freeing memory holding children");
-		free(varChildren);
-
 	} else {
 		// No children, so this is a leaf node.
 		if (!this->isXFA && !stdName) {
@@ -692,10 +683,14 @@ AdobeAcrobatVBufStorage_controlFieldNode_t* AdobeAcrobatVBufBackend_t::fillVBuf(
 		}
 
 		// Hereafter, tempNode is the text node (if any).
-		tempNode = renderText(buffer, parentNode, previousNode, domNode, domElement, useNameAsContent, parentNode->language, textFlags, pageNum);
-		if (tempNode) {
-			// There was text.
-			previousNode = tempNode;
+		if (domNode) {
+			tempNode = renderText(buffer, parentNode, previousNode, domNode, domElement, useNameAsContent, parentNode->language, textFlags, pageNum);
+			if (tempNode) {
+				// There was text.
+				previousNode = tempNode;
+			}
+		} else {
+			tempNode = NULL;
 		}
 
 		if (name)
@@ -762,12 +757,12 @@ void CALLBACK AdobeAcrobatVBufBackend_t::renderThread_winEventProcHook(HWINEVENT
 
 	LOG_DEBUG(L"winEvent for window "<<hwnd);
 
-	int docHandle=(int)hwnd;
+	int docHandle=HandleToUlong(hwnd);
 	int ID=(objectID>0)?objectID:childID;
 	VBufBackend_t* backend=NULL;
 	LOG_DEBUG(L"Searching for backend in collection of "<<runningBackends.size()<<L" running backends");
 	for(VBufBackendSet_t::iterator i=runningBackends.begin();i!=runningBackends.end();++i) {
-		HWND rootWindow=(HWND)((*i)->rootDocHandle);
+		HWND rootWindow=(HWND)UlongToHandle((*i)->rootDocHandle);
 		LOG_DEBUG(L"Comparing backend's root window "<<rootWindow<<L" with window "<<hwnd);
 		if(rootWindow==hwnd) {
 			backend=(*i);
@@ -848,7 +843,11 @@ void AdobeAcrobatVBufBackend_t::render(VBufStorage_buffer_t* buffer, int docHand
 	LOG_DEBUG(L"Rendering done");
 }
 
-AdobeAcrobatVBufBackend_t::AdobeAcrobatVBufBackend_t(int docHandle, int ID): VBufBackend_t(docHandle,ID) {
+AdobeAcrobatVBufBackend_t::AdobeAcrobatVBufBackend_t(int docHandle, int ID)
+	: VBufBackend_t(docHandle,ID)
+	, isXFA(true)
+	, docPagination(nullptr)
+{
 	LOG_DEBUG(L"AdobeAcrobat backend constructor");
 }
 
@@ -856,15 +855,9 @@ AdobeAcrobatVBufBackend_t::~AdobeAcrobatVBufBackend_t() {
 	LOG_DEBUG(L"AdobeAcrobat backend destructor");
 }
 
-extern "C" __declspec(dllexport) VBufBackend_t* VBufBackend_create(int docHandle, int ID) {
+VBufBackend_t* AdobeAcrobatVBufBackend_t_createInstance(int docHandle, int ID) {
 	VBufBackend_t* backend=new AdobeAcrobatVBufBackend_t(docHandle,ID);
 	LOG_DEBUG(L"Created new backend at "<<backend);
 	return backend;
 }
 
-BOOL WINAPI DllMain(HINSTANCE hModule,DWORD reason,LPVOID lpReserved) {
-	if(reason==DLL_PROCESS_ATTACH) {
-		_CrtSetReportHookW2(_CRT_RPTHOOK_INSTALL,(_CRT_REPORT_HOOKW)NVDALogCrtReportHook);
-	}
-	return true;
-}

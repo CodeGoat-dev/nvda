@@ -1,8 +1,12 @@
 #appModules/powerpnt.py
 #A part of NonVisual Desktop Access (NVDA)
-#Copyright (C) 2012-2015 NV Access Limited
+#Copyright (C) 2012-2018 NV Access Limited
 #This file is covered by the GNU General Public License.
 #See the file COPYING for more details.
+from typing import (
+	Optional,
+	Dict,
+)
 
 import comtypes
 from comtypes.automation import IDispatch
@@ -15,9 +19,10 @@ import queueHandler
 import colors
 import api
 import speech
-import sayAllHandler
+from speech import sayAll
 import NVDAHelper
 import winUser
+import msoAutoShapeTypes
 from treeInterceptorHandler import DocumentTreeInterceptor
 from NVDAObjects import NVDAObjectTextInfo
 from displayModel import DisplayModelTextInfo, EditableTextDisplayModelTextInfo
@@ -30,8 +35,11 @@ from NVDAObjects.behaviors import EditableTextWithoutAutoSelectDetection, Editab
 import braille
 from cursorManager import ReviewCursorManager
 import controlTypes
+from controlTypes import TextPosition
 from logHandler import log
 import scriptHandler
+from locationHelper import RectLTRB
+from NVDAObjects.window._msOfficeChart import OfficeChart
 
 # Window classes where PowerPoint's object model should be used 
 # These also all request to have their (incomplete) UI Automation implementations  disabled. [MS Office 2013]
@@ -77,6 +85,10 @@ class ppEApplicationSink(comtypes.COMObject):
 
 #Bullet types
 ppBulletNumbered=2
+
+# media types
+ppVideo=3
+ppAudio=2
 
 # values for enumeration 'PpPlaceholderType'
 ppPlaceholderMixed = -2
@@ -213,17 +225,17 @@ msoInkComment = 23
 msoSmartArt = 24
 
 msoShapeTypesToNVDARoles={
-	msoChart:controlTypes.ROLE_CHART,
-	msoGroup:controlTypes.ROLE_GROUPING,
-	msoEmbeddedOLEObject:controlTypes.ROLE_EMBEDDEDOBJECT,
-	msoLine:controlTypes.ROLE_LINE,
-	msoLinkedOLEObject:controlTypes.ROLE_EMBEDDEDOBJECT,
-	msoLinkedPicture:controlTypes.ROLE_GRAPHIC,
-	msoPicture:controlTypes.ROLE_GRAPHIC,
-	msoTextBox:controlTypes.ROLE_TEXTFRAME,
-	msoTable:controlTypes.ROLE_TABLE,
-	msoCanvas:controlTypes.ROLE_CANVAS,
-	msoDiagram:controlTypes.ROLE_DIAGRAM,
+	msoChart:controlTypes.Role.CHART,
+	msoGroup:controlTypes.Role.GROUPING,
+	msoEmbeddedOLEObject:controlTypes.Role.EMBEDDEDOBJECT,
+	msoLine:controlTypes.Role.LINE,
+	msoLinkedOLEObject:controlTypes.Role.EMBEDDEDOBJECT,
+	msoLinkedPicture:controlTypes.Role.GRAPHIC,
+	msoPicture:controlTypes.Role.GRAPHIC,
+	msoTextBox:controlTypes.Role.TEXTFRAME,
+	msoTable:controlTypes.Role.TABLE,
+	msoCanvas:controlTypes.Role.CANVAS,
+	msoDiagram:controlTypes.Role.DIAGRAM,
 }
 
 # PpMouseActivation
@@ -237,7 +249,7 @@ def getBulletText(ppBulletFormat):
 	if t==ppBulletNumbered:
 		return "%d."%ppBulletFormat.number #(ppBulletFormat.startValue+(ppBulletFormat.number-1))
 	elif t:
-		return unichr(ppBulletFormat.character)
+		return chr(ppBulletFormat.character)
 
 def walkPpShapeRange(ppShapeRange):
 	for ppShape in ppShapeRange:
@@ -251,7 +263,7 @@ class PaneClassDC(Window):
 	"""Handles fetching of the Powerpoint object model."""
 
 	presentationType=Window.presType_content
-	role=controlTypes.ROLE_PANE
+	role=controlTypes.Role.PANE
 	value=None
 	TextInfo=DisplayModelTextInfo
 
@@ -325,6 +337,8 @@ class DocumentWindow(PaneClassDC):
 			#Specifically handle shapes representing a table as they have row and column counts etc
 			if ppObj.hasTable:
 				return Table(windowHandle=self.windowHandle,documentWindow=self,ppObject=ppObj)
+			elif ppObj.hasChart:
+				return ChartShape(windowHandle=self.windowHandle,documentWindow=self,ppObject=ppObj)
 			else: #Generic shape
 				return Shape(windowHandle=self.windowHandle,documentWindow=self,ppObject=ppObj)
 		elif selType==ppSelectionText: #Text frame
@@ -412,15 +426,6 @@ class DocumentWindow(PaneClassDC):
 		finally:
 			self._isHandlingSelectionChange=False
 
-	def event_gainFocus(self):
-		"""Bounces focus to the currently selected slide, shape or Text frame."""
-		obj=self.selection
-		if obj:
-			eventHandler.queueEvent("focusEntered",self)
-			eventHandler.queueEvent("gainFocus",obj)
-		else:
-			super(DocumentWindow,self).event_gainFocus()
-
 	def script_selectionChange(self,gesture):
 		gesture.send()
 		if scriptHandler.isScriptWaiting():
@@ -440,7 +445,7 @@ class DocumentWindow(PaneClassDC):
 
 class OutlinePane(EditableTextWithoutAutoSelectDetection,PaneClassDC):
 	TextInfo=EditableTextDisplayModelTextInfo
-	role=controlTypes.ROLE_EDITABLETEXT
+	role=controlTypes.Role.EDITABLETEXT
 
 class PpObject(Window):
 	"""
@@ -482,7 +487,7 @@ class SlideBase(PpObject):
 	def _isEqual(self,other):
 		return super(SlideBase,self)._isEqual(other) and self.name==other.name
 
-	role=controlTypes.ROLE_PANE
+	role=controlTypes.Role.PANE
 
 class Slide(SlideBase):
 	"""Represents a single slide in Powerpoint."""
@@ -519,9 +524,9 @@ class Shape(PpObject):
 
 	def __init__(self, **kwargs):
 		super(Shape, self).__init__(**kwargs)
-		if self.role == controlTypes.ROLE_EMBEDDEDOBJECT:
+		if self.role == controlTypes.Role.EMBEDDEDOBJECT:
 			if self.ppObject.OLEFormat.ProgID.startswith(MATHTYPE_PROGID):
-				self.role = controlTypes.ROLE_MATH
+				self.role = controlTypes.Role.MATH
 
 	def _get__overlapInfo(self):
 		slideWidth=self.appModule._ppApplication.activePresentation.pageSetup.slideWidth
@@ -549,7 +554,14 @@ class Shape(PpObject):
 			if otherTop>=bottom or otherBottom<=top:
 				continue
 			info={}
-			info['label']=Shape(windowHandle=self.windowHandle,documentWindow=self.documentWindow,ppObject=ppShape).name
+			otherShape=Shape(windowHandle=self.windowHandle,documentWindow=self.documentWindow,ppObject=ppShape)
+			otherLabel=otherShape.name
+			otherRoleText=otherShape.roleText
+			otherLabel=" ".join(x for x in (otherLabel,otherRoleText) if x)
+			if not otherLabel:
+				# Translators:   an unlabelled item in Powerpoint another shape is overlapping 
+				otherLabel=_("other item")
+			info['label']=otherLabel
 			info['otherIsBehind']=otherIsBehind
 			info['overlapsOtherLeftBy']=right-otherLeft if right<otherRight else 0
 			info['overlapsOtherTopBy']=bottom-otherTop if bottom<otherBottom else 0
@@ -723,14 +735,22 @@ class Shape(PpObject):
 		top=self.documentWindow.ppObjectModel.pointsToScreenPixelsY(pointTop)
 		right=self.documentWindow.ppObjectModel.pointsToScreenPixelsX(pointLeft+pointWidth)
 		bottom=self.documentWindow.ppObjectModel.pointsToScreenPixelsY(pointTop+pointHeight)
-		width=right-left
-		height=bottom-top
-		return (left,top,width,height)
+		return RectLTRB(left,top,right,bottom).toLTWH()
 
 	def _get_ppShapeType(self):
 		"""Fetches and caches the type of this shape."""
 		self.ppShapeType=self.ppObject.type
 		return self.ppShapeType
+
+	def _get_ppAutoShapeType(self):
+		"""Fetches and caches the auto type of this shape."""
+		self.ppAutoShapeType=self.ppObject.autoShapeType
+		return self.ppAutoShapeType
+
+	def _get_ppMediaType(self):
+		"""Fetches and caches the media type of this shape."""
+		self.ppMediaType=self.ppObject.mediaType
+		return self.ppMediaType
 
 	def _get_name(self):
 		"""The name is calculated firstly from the object's title, otherwize if its a generic shape, then  part of its programmatic name is used."""
@@ -741,13 +761,15 @@ class Shape(PpObject):
 			title=None
 		if title:
 			return title
+		# Provide a meaningful label for placeholders from slide templates
 		if self.ppShapeType==msoPlaceholder:
 			label=ppPlaceholderLabels.get(self.ppPlaceholderType)
 			if label:
 				return label
-		if self.role==controlTypes.ROLE_SHAPE:
-			name=self.ppObject.name
-			return " ".join(name.split(' ')[:-1])
+		# Label action buttons like next and previous etc
+		ppAutoShapeType=self.ppAutoShapeType
+		label=msoAutoShapeTypes.msoAutoShapeTypeToActionLabel.get(ppAutoShapeType)
+		return label
 
 	def _isEqual(self,other):
 		return super(Shape,self)._isEqual(other) and self.ppObject.ID==other.ppObject.ID
@@ -756,7 +778,25 @@ class Shape(PpObject):
 		return self.ppObject.alternativeText
 
 	def _get_role(self):
-		return msoShapeTypesToNVDARoles.get(self.ppShapeType,controlTypes.ROLE_SHAPE)
+		ppShapeType=self.ppShapeType
+		# handle specific media types
+		if ppShapeType==msoMedia:
+			ppMediaType=self.ppMediaType
+			if ppMediaType==ppVideo:
+				return controlTypes.Role.VIDEO
+			elif ppMediaType==ppAudio:
+				return controlTypes.Role.AUDIO
+		role=msoShapeTypesToNVDARoles.get(self.ppShapeType,controlTypes.Role.SHAPE)
+		if role==controlTypes.Role.SHAPE:
+			ppAutoShapeType=self.ppAutoShapeType
+			role=msoAutoShapeTypes.msoAutoShapeTypeToRole.get(ppAutoShapeType,controlTypes.Role.SHAPE)
+		return role
+
+	def _get_roleText(self):
+		if self.role!=controlTypes.Role.SHAPE:
+			return None
+		ppAutoShapeType=self.ppAutoShapeType
+		return msoAutoShapeTypes.msoAutoShapeTypeToRoleText.get(ppAutoShapeType)
 
 	def _get_value(self):
 		if self.ppObject.hasTextFrame:
@@ -765,9 +805,9 @@ class Shape(PpObject):
 	def _get_states(self):
 		states=super(Shape,self).states
 		if self._overlapInfo[1] is not None:
-			states.add(controlTypes.STATE_OBSCURED)
+			states.add(controlTypes.State.OBSCURED)
 		if any(x for x in self._edgeDistances if x<0):
-			states.add(controlTypes.STATE_OFFSCREEN)
+			states.add(controlTypes.State.OFFSCREEN)
 		return states
 
 	def _get_mathMl(self):
@@ -794,6 +834,35 @@ class Shape(PpObject):
 		"kb:shift+downArrow":"moveVertical",
 		"kb:enter":"selectionChange",
 		"kb:f2":"selectionChange",
+	}
+
+class ChartShape(Shape):
+	"""
+	A PowerPoint Shape that holds an MS Office Chart.
+	When focused, press enter to interact with the actual chart.
+	"""
+
+	def _get_name(self):
+		chartObj=self.chart.officeChartObject
+		if chartObj.hasTitle:
+			return chartObj.chartTitle.text
+		return super(ChartShape,self).name
+
+	role=controlTypes.Role.CHART
+
+	def _get_chart(self):
+		return OfficeChart(windowHandle=self.windowHandle , officeApplicationObject = self.ppObject.Application , officeChartObject = self.ppObject.chart, initialDocument=self )
+
+	def focusOnActiveDocument(self,chart):
+		self.ppObject.select()
+		eventHandler.executeEvent("gainFocus",self)
+
+	def script_enterChart(self,gesture):
+		eventHandler.executeEvent("gainFocus",self.chart)
+
+	__gestures={
+		"kb:enter":"enterChart",
+		"kb:space":"enterChart",
 	}
 
 class TextFrameTextInfo(textInfos.offsets.OffsetsTextInfo):
@@ -865,10 +934,13 @@ class TextFrameTextInfo(textInfos.offsets.OffsetsTextInfo):
 			formatField['bold']=bool(font.bold)
 			formatField['italic']=bool(font.italic)
 			formatField['underline']=bool(font.underline)
+		if formatConfig['reportSuperscriptsAndSubscripts']:
 			if font.subscript:
-				formatField['text-position']='sub'
+				formatField['text-position'] = TextPosition.SUBSCRIPT
 			elif font.superscript:
-				formatField['text-position']='super'
+				formatField['text-position'] = TextPosition.SUPERSCRIPT
+			else:
+				formatField['text-position'] = TextPosition.BASELINE
 		if formatConfig['reportColor']:
 			formatField['color']=colors.RGB.fromCOLORREF(font.color.rgb)
 		if formatConfig["reportLinks"] and curRun.actionSettings(ppMouseClick).action==ppActionHyperlink:
@@ -890,7 +962,7 @@ class Table(Shape):
 class TableCell(PpObject):
 	"""Represents a table cell in Powerpoint. Accepts a table and a row and column number as this cannot be calculated directly."""
 	name=None
-	role=controlTypes.ROLE_TABLECELL
+	role=controlTypes.Role.TABLECELL
 
 	def _isEqual(self,other):
 		return self.table==other.table and (self.columnNumber,self.rowNumber)==(other.columnNumber,other.rowNumber)
@@ -918,8 +990,8 @@ class TextFrame(EditableTextWithoutAutoSelectDetection,PpObject):
 		return super(TextFrame,self)._isEqual(other) and self.ppObject.parent.ID==other.ppObject.parent.ID
 
 	name=None
-	role=controlTypes.ROLE_EDITABLETEXT
-	states = {controlTypes.STATE_MULTILINE}
+	role=controlTypes.Role.EDITABLETEXT
+	states = {controlTypes.State.MULTILINE}
 
 	def _get_parent(self):
 		parent=self.ppObject.parent
@@ -959,7 +1031,7 @@ class SlideShowTreeInterceptorTextInfo(NVDAObjectTextInfo):
 			return (0,self._getStoryLength())
 		raise LookupError
 
-	def getTextWithFields(self,formatConfig=None):
+	def getTextWithFields(self, formatConfig: Optional[Dict] = None) -> textInfos.TextInfo.TextWithFieldsT:
 		fields = self.obj.rootNVDAObject.basicTextFields
 		text = self.obj.rootNVDAObject.basicText
 		out = []
@@ -1017,10 +1089,10 @@ class SlideShowTreeInterceptor(DocumentTreeInterceptor):
 		else:
 			info = self.selection
 			if not info.isCollapsed:
-				speech.speakSelectionMessage(_("selected %s"), info.text)
+				speech.speakPreselectedText(info.text)
 			else:
 				info.expand(textInfos.UNIT_LINE)
-				speech.speakTextInfo(info, reason=controlTypes.REASON_CARET, unit=textInfos.UNIT_LINE)
+				speech.speakTextInfo(info, reason=controlTypes.OutputReason.CARET, unit=textInfos.UNIT_LINE)
 
 	def event_gainFocus(self,obj,nextHandler):
 		pass
@@ -1032,7 +1104,7 @@ class SlideShowTreeInterceptor(DocumentTreeInterceptor):
 
 	def reportNewSlide(self):
 		self.makeTextInfo(textInfos.POSITION_FIRST).updateCaret()
-		sayAllHandler.readText(sayAllHandler.CURSOR_CARET)
+		sayAll.SayAllHandler.readText(sayAll.CURSOR.CARET)
 
 	def script_toggleNotesMode(self,gesture):
 		self.rootNVDAObject.notesMode=not self.rootNVDAObject.notesMode
@@ -1105,7 +1177,7 @@ class SlideShowWindow(PaneClassDC):
 		if shapeType==msoEmbeddedOLEObject:
 			oleFormat=shape.OLEFormat
 			if oleFormat.ProgID.startswith(MATHTYPE_PROGID):
-				yield textInfos.ControlField(role=controlTypes.ROLE_MATH,
+				yield textInfos.ControlField(role=controlTypes.Role.MATH,
 					oleFormat=oleFormat, _startOfNode=True)
 			return
 		label=shape.alternativeText
@@ -1187,13 +1259,16 @@ class AppModule(appModuleHandler.AppModule):
 		import gui
 		# Translators: A title for a dialog shown while Microsoft PowerPoint initializes
 		d=wx.Dialog(None,title=_("Waiting for Powerpoint..."))
-		d.Center(wx.BOTH | wx.CENTER_ON_SCREEN)
+		d.CentreOnScreen()
 		gui.mainFrame.prePopup()
 		d.Show()
 		self.hasTriedPpAppSwitch=True
 		#Make sure NVDA detects and reports focus on the waiting dialog
 		api.processPendingEvents()
-		comtypes.client.PumpEvents(1)
+		try:
+			comtypes.client.PumpEvents(1)
+		except WindowsError:
+			log.debugWarning("Error while pumping com events", exc_info=True)
 		d.Destroy()
 		gui.mainFrame.postPopup()
 
@@ -1267,7 +1342,7 @@ class AppModule(appModuleHandler.AppModule):
 		return m
 
 	def chooseNVDAObjectOverlayClasses(self,obj,clsList):
-		if obj.windowClassName in objectModelWindowClasses and isinstance(obj,IAccessible) and not isinstance(obj,PpObject) and obj.event_objectID==winUser.OBJID_CLIENT and controlTypes.STATE_FOCUSED in obj.states:
+		if obj.windowClassName in objectModelWindowClasses and isinstance(obj,IAccessible) and not isinstance(obj,PpObject) and obj.event_objectID==winUser.OBJID_CLIENT and controlTypes.State.FOCUSED in obj.states:
 			m=self.fetchPpObjectModel(windowHandle=obj.windowHandle)
 			if not m:
 				log.debugWarning("no object model")

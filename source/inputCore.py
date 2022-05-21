@@ -1,8 +1,7 @@
-#inputCore.py
-#A part of NonVisual Desktop Access (NVDA)
-#This file is covered by the GNU General Public License.
-#See the file COPYING for more details.
-#Copyright (C) 2010 James Teh <jamie@jantrid.net>
+# A part of NonVisual Desktop Access (NVDA)
+# This file is covered by the GNU General Public License.
+# See the file COPYING for more details.
+# Copyright (C) 2010-2022 NV Access Limited, Babbage B.V., Mozilla Corporation
 
 """Core framework for handling input from the user.
 Every piece of input from the user (e.g. a key press) is represented by an L{InputGesture}.
@@ -12,10 +11,12 @@ For example, it is used to execute gestures and handle input help.
 
 import sys
 import os
-import itertools
 import weakref
+import time
+from typing import Dict, Any, Tuple, List, Union
+from gui import blockAction
 import configobj
-import sayAllHandler
+from speech import sayAll
 import baseObject
 import scriptHandler
 import queueHandler
@@ -23,11 +24,13 @@ import api
 import speech
 import characterProcessing
 import config
+from fileUtils import FaultTolerantFile
 import watchdog
 from logHandler import log
 import globalVars
 import languageHandler
 import controlTypes
+import winKernel
 
 #: Script category for emulated keyboard keys.
 # Translators: The name of a category of NVDA commands.
@@ -46,7 +49,7 @@ class NoInputGestureAction(LookupError):
 class InputGesture(baseObject.AutoPropertyObject):
 	"""A single gesture of input from the user.
 	For example, this could be a key press on a keyboard or Braille display or a click of the mouse.
-	At the very least, subclasses must implement L{_get_identifiers} and L{_get_displayName}.
+	At the very least, subclasses must implement L{_get_identifiers}.
 	"""
 	cachePropertiesByDefault = True
 
@@ -58,43 +61,68 @@ class InputGesture(baseObject.AutoPropertyObject):
 	#: @type: bool
 	bypassInputHelp=False
 
-	#: Indicates that this gesture should be reported in Input help mode. This would only be false for floodding Gestures like touch screen hovers.
+	#: Indicates that this gesture should be reported in Input help mode. This would only be false
+	#: for flooding Gestures like touch screen hovers.
 	#: @type: bool
 	reportInInputHelp=True
 
+	#: Indicates whether executing this gesture should explicitly prevent the system from being idle.
+	#: For example, the system is unaware of C{BrailleDisplayGesture} execution,
+	#: and might even get into sleep mode when reading a long portion of text in braille.
+	#: In contrast, the system is aware of C{KeyboardInputGesture} execution itself.
+	shouldPreventSystemIdle: bool = False
+
+	# typing information for auto property _get_identifiers
+	identifiers: Union[List[str], Tuple[str, ...]]
+
+	_abstract_identifiers = True
 	def _get_identifiers(self):
 		"""The identifier(s) which will be used in input gesture maps to represent this gesture.
-		These identifiers will be looked up in order until a match is found.
+		These identifiers will be normalized and looked up in order until a match is found.
 		A single identifier should take the form: C{source:id}
 		where C{source} is a few characters representing the source of this gesture
 		and C{id} is the specific gesture.
-		If C{id} consists of multiple items with indeterminate order,
-		they should be separated by a + sign and they should be in Python set order.
-		Also, the entire identifier should be in lower case.
-		An example identifier is: C{kb(desktop):nvda+1}
+		An example identifier is: C{kb(desktop):NVDA+1}
+
+		This property should not perform normalization itself.
+		However, please note the following regarding normalization.
+		If C{id} contains multiple chunks separated by a + sign, they are considered to be ordered arbitrarily
+		and may be reordered when normalized.
+		Normalization also ensures that the entire identifier is lower case.
+		For example, NVDA+control+f1 and control+nvda+f1 will match when normalized.
+		See L{normalizeGestureIdentifier} for more details.
+
 		Subclasses must implement this method.
 		@return: One or more identifiers which uniquely identify this gesture.
 		@rtype: list or tuple of str
 		"""
 		raise NotImplementedError
 
-	def _get_logIdentifier(self):
-		"""A single identifier which will be logged for this gesture.
-		This identifier should be usable in input gesture maps, but should be as readable as possible to the user.
-		For example, it might sort key names in a particular order
-		and it might contain mixed case.
-		This is in contrast to L{identifiers}, which must be normalized.
-		The base implementation returns the first identifier from L{identifiers}.
+	# type information for auto property _get_normalizedIdentifiers
+	normalizedIdentifiers: List[str]
+
+	def _get_normalizedIdentifiers(self):
+		"""The normalized identifier(s) for this gesture.
+		This just normalizes the identifiers returned in L{identifiers}
+		by calling L{normalizeGestureIdentifier} for each identifier.
+		These normalized identifiers can be directly looked up in input gesture maps.
+		Subclasses should not override this method.
+		@return: One or more normalized identifiers which uniquely identify this gesture.
+		@rtype: list of str
 		"""
-		return self.identifiers[0]
+		return [normalizeGestureIdentifier(identifier) for identifier in self.identifiers]
+
+	# type information for auto property _get_displayName
+	displayName: str
 
 	def _get_displayName(self):
 		"""The name of this gesture as presented to the user.
-		Subclasses must implement this method.
+		The base implementation calls L{getDisplayTextForIdentifier} for the first identifier.
+		Subclasses need not override this unless they wish to provide a more optimal implementation.
 		@return: The display name.
 		@rtype: str
 		"""
-		return self.getDisplayTextForIdentifier(self.identifiers[0])[1]
+		return self.getDisplayTextForIdentifier(self.normalizedIdentifiers[0])[1]
 
 	#: Whether this gesture should be reported when reporting of command gestures is enabled.
 	#: @type: bool
@@ -146,18 +174,29 @@ class InputGesture(baseObject.AutoPropertyObject):
 	@classmethod
 	def getDisplayTextForIdentifier(cls, identifier):
 		"""Get the text to be presented to the user describing a given gesture identifier.
-		This should only be called for gesture identifiers associated with this class.
+		This should only be called with normalized gesture identifiers returned by the
+		L{normalizedIdentifiers} property in the same subclass.
+		For example, C{KeyboardInputGesture.getDisplayTextForIdentifier} should only be called
+		for "kb:*" identifiers returned by C{KeyboardInputGesture.normalizedIdentifiers}.
 		Most callers will want L{inputCore.getDisplayTextForIdentifier} instead.
 		The display text consists of two strings:
 		the gesture's source (e.g. "laptop keyboard")
 		and the specific gesture (e.g. "alt+tab").
 		@param identifier: The normalized gesture identifier in question.
-		@type identifier: basestring
+		@type identifier: str
 		@return: A tuple of (source, specificGesture).
-		@rtype: tuple of (basestring, basestring)
+		@rtype: tuple of (str, str)
 		@raise Exception: If no display text can be determined.
 		"""
 		raise NotImplementedError
+
+	def executeScript(self, script):
+		"""
+		Executes the given script with this gesture, using scriptHandler.executeScript.
+		This is only implemented so as to allow Gesture subclasses
+		to perform an action directly before / after the script executes.
+		"""
+		return scriptHandler.executeScript(script, self)
 
 class GlobalGestureMap(object):
 	"""Maps gestures to scripts anywhere in NVDA.
@@ -171,12 +210,19 @@ class GlobalGestureMap(object):
 		@param entries: Initial entries to add; see L{update} for the format.
 		@type entries: mapping of str to mapping
 		"""
-		self._map = {}
+		self._map: Dict[
+			str,  # Normalized gesture
+			List[
+				Tuple[
+					str,  # module
+					str,  # class name
+					str,  # script
+		]]] = {}
 		#: Indicates that the last load or update contained an error.
 		#: @type: bool
 		self.lastUpdateContainedError = False
 		#: The file name for this gesture map, if any.
-		#: @type: basestring
+		#: @type: str
 		self.fileName = None
 		if entries:
 			self.update(entries)
@@ -228,7 +274,7 @@ class GlobalGestureMap(object):
 		self.fileName = filename
 		try:
 			conf = configobj.ConfigObj(filename, file_error=True, encoding="UTF-8")
-		except (configobj.ConfigObjError,UnicodeDecodeError), e:
+		except (configobj.ConfigObjError,UnicodeDecodeError) as e:
 			log.warning("Error in gesture map '%s': %s"%(filename, e))
 			self.lastUpdateContainedError = True
 			return
@@ -253,19 +299,19 @@ class GlobalGestureMap(object):
 		@type entries: mapping of str to mapping
 		"""
 		self.lastUpdateContainedError = False
-		for locationName, location in entries.iteritems():
+		for locationName, location in entries.items():
 			try:
 				module, className = locationName.rsplit(".", 1)
 			except:
 				log.error("Invalid module/class specification: %s" % locationName)
 				self.lastUpdateContainedError = True
 				continue
-			for script, gestures in location.iteritems():
+			for script, gestures in location.items():
 				if script == "None":
 					script = None
 				if gestures == "":
 					gestures = ()
-				elif isinstance(gestures, basestring):
+				elif isinstance(gestures, str):
 					gestures = [gestures]
 				for gesture in gestures:
 					try:
@@ -327,18 +373,17 @@ class GlobalGestureMap(object):
 			raise ValueError("Mapping not found")
 		scripts.remove((module, className, script))
 
+	@blockAction.when(blockAction.Context.SECURE_MODE)
 	def save(self):
 		"""Save this gesture map to disk.
 		@precondition: L{load} must have been called.
 		"""
-		if globalVars.appArgs.secure:
-			return
 		if not self.fileName:
 			raise ValueError("No file name")
 		out = configobj.ConfigObj(encoding="UTF-8")
 		out.filename = self.fileName
 
-		for gesture, scripts in self._map.iteritems():
+		for gesture, scripts in self._map.items():
 			for module, className, script in scripts:
 				key = "%s.%s" % (module, className)
 				try:
@@ -359,7 +404,8 @@ class GlobalGestureMap(object):
 					else:
 						outSect[script] = [outVal, gesture]
 
-		out.write()
+		with FaultTolerantFile(out.filename) as f:
+			out.write(f)
 
 class InputManager(baseObject.AutoPropertyObject):
 	"""Manages functionality related to input from the user.
@@ -383,6 +429,7 @@ class InputManager(baseObject.AutoPropertyObject):
 		self.userGestureMap = GlobalGestureMap()
 		self.loadLocaleGestureMap()
 		self.loadUserGestureMap()
+		self._lastInputTime = None
 
 	def executeGesture(self, gesture):
 		"""Perform the action associated with a gesture.
@@ -404,12 +451,12 @@ class InputManager(baseObject.AutoPropertyObject):
 		wasInSayAll=False
 		if gesture.isModifier:
 			if not self.lastModifierWasInSayAll:
-				wasInSayAll=self.lastModifierWasInSayAll=sayAllHandler.isRunning()
+				wasInSayAll = self.lastModifierWasInSayAll = sayAll.SayAllHandler.isRunning()
 		elif self.lastModifierWasInSayAll:
 			wasInSayAll=True
 			self.lastModifierWasInSayAll=False
 		else:
-			wasInSayAll=sayAllHandler.isRunning()
+			wasInSayAll = sayAll.SayAllHandler.isRunning()
 		if wasInSayAll:
 			gesture.wasInSayAll=True
 
@@ -419,8 +466,12 @@ class InputManager(baseObject.AutoPropertyObject):
 		elif speechEffect in (gesture.SPEECHEFFECT_PAUSE, gesture.SPEECHEFFECT_RESUME):
 			queueHandler.queueFunction(queueHandler.eventQueue, speech.pauseSpeech, speechEffect == gesture.SPEECHEFFECT_PAUSE)
 
+		if gesture.shouldPreventSystemIdle:
+			winKernel.SetThreadExecutionState(winKernel.ES_SYSTEM_REQUIRED)
+
 		if log.isEnabledFor(log.IO) and not gesture.isModifier:
-			log.io("Input: %s" % gesture.logIdentifier)
+			self._lastInputTime = time.time()
+			log.io("Input: %s" % gesture.identifiers[0])
 
 		if self._captureFunc:
 			try:
@@ -437,7 +488,7 @@ class InputManager(baseObject.AutoPropertyObject):
 			queueHandler.queueFunction(queueHandler.eventQueue, speech.speakMessage, gesture.displayName)
 
 		gesture.reportExtra()
-
+		
 		# #2953: if an intercepted command Script (script that sends a gesture) is queued
 		# then queue all following gestures (that don't have a script) with a fake script so that they remain in order.
 		if not script and scriptHandler._numIncompleteInterceptedCommandScripts:
@@ -447,8 +498,11 @@ class InputManager(baseObject.AutoPropertyObject):
 		if script:
 			scriptHandler.queueScript(script, gesture)
 			return
-
-		raise NoInputGestureAction
+		else:
+			# Clear memorized last script to avoid getLastScriptRepeatCount detect a repeat
+			# in case an unbound gesture is executed between two identical bound gestures.
+			queueHandler.queueFunction(queueHandler.eventQueue, scriptHandler.clearLastScript)
+			raise NoInputGestureAction
 
 	def _get_isInputHelpActive(self):
 		"""Whether input help is enabled, wherein the function of each key pressed by the user is reported but not executed.
@@ -471,7 +525,7 @@ class InputManager(baseObject.AutoPropertyObject):
 		textList = [gesture.displayName]
 		script = gesture.script
 		runScript = False
-		logMsg = "Input help: gesture %s"%gesture.logIdentifier
+		logMsg = "Input help: gesture %s"%gesture.identifiers[0]
 		if script:
 			scriptName = scriptHandler.getScriptName(script)
 			logMsg+=", bound to script %s" % scriptName
@@ -492,7 +546,11 @@ class InputManager(baseObject.AutoPropertyObject):
 		import braille
 		braille.handler.message("\t\t".join(textList))
 		# Punctuation must be spoken for the gesture name (the first chunk) so that punctuation keys are spoken.
-		speech.speakText(textList[0], reason=controlTypes.REASON_MESSAGE, symbolLevel=characterProcessing.SYMLVL_ALL)
+		speech.speakText(
+			textList[0],
+			reason=controlTypes.OutputReason.MESSAGE,
+			symbolLevel=characterProcessing.SymbolLevel.ALL
+		)
 		for text in textList[1:]:
 			speech.speakMessage(text)
 
@@ -510,10 +568,10 @@ class InputManager(baseObject.AutoPropertyObject):
 		self.localeGestureMap.clear()
 		lang = languageHandler.getLanguage()
 		try:
-			self.localeGestureMap.load(os.path.join("locale", lang, "gestures.ini"))
+			self.localeGestureMap.load(os.path.join(globalVars.appDir, "locale", lang, "gestures.ini"))
 		except IOError:
 			try:
-				self.localeGestureMap.load(os.path.join("locale", lang.split('_')[0], "gestures.ini"))
+				self.localeGestureMap.load(os.path.join(globalVars.appDir, "locale", lang.split('_')[0], "gestures.ini"))
 			except IOError:
 				log.debugWarning("No locale gesture map for language %s" % lang)
 
@@ -541,6 +599,14 @@ class InputManager(baseObject.AutoPropertyObject):
 
 class _AllGestureMappingsRetriever(object):
 
+	results: Dict[
+		str,  # category name
+		Dict[
+			str,  # command display name
+			Any,  # AllGesturesScriptInfo
+		]
+	]
+
 	def __init__(self, obj, ancestors):
 		self.results = {}
 		self.scriptInfo = {}
@@ -563,6 +629,16 @@ class _AllGestureMappingsRetriever(object):
 		if app:
 			self.addObj(app)
 
+		# Braille display driver
+		if isinstance(braille.handler.display, baseObject.ScriptableObject):
+			self.addObj(braille.handler.display)
+
+		# Vision enhancement provider
+		import vision
+		for provider in vision.handler.getActiveProviderInstances():
+			if isinstance(provider, baseObject.ScriptableObject):
+				self.addObj(provider)
+
 		# Tree interceptor.
 		ti = obj.treeInterceptor
 		if ti:
@@ -573,11 +649,17 @@ class _AllGestureMappingsRetriever(object):
 		for anc in reversed(ancestors):
 			self.addObj(anc, isAncestor=True)
 
-		# Global commands.
 		import globalCommands
+		# Configuration profiles
+		self.addObj(globalCommands.configProfileActivationCommands)
+
+		# Global commands.
 		self.addObj(globalCommands.commands)
 
 	def addResult(self, scriptInfo):
+		"""
+		@type scriptInfo: AllGesturesScriptInfo
+		"""
 		self.scriptInfo[scriptInfo.cls, scriptInfo.scriptName] = scriptInfo
 		try:
 			cat = self.results[scriptInfo.category]
@@ -598,7 +680,7 @@ class _AllGestureMappingsRetriever(object):
 				scriptInfo = self.scriptInfo[cls, scriptName]
 			except KeyError:
 				if scriptName.startswith("kb:"):
-					scriptInfo = self.makeKbEmuScriptInfo(cls, scriptName)
+					scriptInfo = self.makeKbEmuScriptInfo(cls, kbGestureIdentifier=scriptName)
 				else:
 					try:
 						script = getattr(cls, "script_%s" % scriptName)
@@ -610,27 +692,35 @@ class _AllGestureMappingsRetriever(object):
 				self.addResult(scriptInfo)
 			scriptInfo.gestures.append(gesture)
 
-	def makeKbEmuScriptInfo(self, cls, scriptName):
-		info = AllGesturesScriptInfo(cls, scriptName)
+	@classmethod
+	def makeKbEmuScriptInfo(cls, scriptCls, kbGestureIdentifier):
+		"""
+		@rtype AllGesturesScriptInfo
+		"""
+		info = KbEmuScriptInfo(scriptCls, kbGestureIdentifier)
 		info.category = SCRCAT_KBEMU
-		info.displayName = scriptName[3:]
+		info.displayName = getDisplayTextForGestureIdentifier(
+			normalizeGestureIdentifier(kbGestureIdentifier)
+		)[1]
 		return info
 
-	def makeNormalScriptInfo(self, cls, scriptName, script):
-		info = AllGesturesScriptInfo(cls, scriptName)
-		info.category = self.getScriptCategory(cls, script)
+	@classmethod
+	def makeNormalScriptInfo(cls, scriptCls, scriptName, script):
+		info = AllGesturesScriptInfo(scriptCls, scriptName)
+		info.category = cls.getScriptCategory(scriptCls, script)
 		info.displayName = script.__doc__
 		if not info.displayName:
 			return None
 		return info
 
-	def getScriptCategory(self, cls, script):
+	@classmethod
+	def getScriptCategory(cls, scriptCls, script):
 		try:
 			return script.category
 		except AttributeError:
 			pass
 		try:
-			return cls.scriptCategory
+			return scriptCls.scriptCategory
 		except AttributeError:
 			pass
 		return SCRCAT_MISC
@@ -638,7 +728,7 @@ class _AllGestureMappingsRetriever(object):
 	def addObj(self, obj, isAncestor=False):
 		scripts = {}
 		for cls in obj.__class__.__mro__:
-			for scriptName, script in cls.__dict__.iteritems():
+			for scriptName, script in cls.__dict__.items():
 				if not scriptName.startswith("script_"):
 					continue
 				if isAncestor and not getattr(script, "canPropagate", False):
@@ -652,9 +742,9 @@ class _AllGestureMappingsRetriever(object):
 						continue
 					self.addResult(scriptInfo)
 				scripts[script] = scriptInfo
-		for gesture, script in obj._gestureMap.iteritems():
+		for gesture, script in obj._gestureMap.items():
 			try:
-				scriptInfo = scripts[script.__func__]
+				scriptInfo = scripts[script]
 			except KeyError:
 				continue
 			key = (scriptInfo.cls, gesture)
@@ -679,19 +769,28 @@ class AllGesturesScriptInfo(object):
 	def className(self):
 		return self.cls.__name__
 
+
+class KbEmuScriptInfo(AllGesturesScriptInfo):
+	pass
+
+
 def normalizeGestureIdentifier(identifier):
 	"""Normalize a gesture identifier so that it matches other identifiers for the same gesture.
-	Any items separated by a + sign after the source are considered to be of indeterminate order
-	and are reordered into Python set ordering.
-	Then the entire identifier is converted to lower case.
+	First, the entire identifier is converted to lower case.
+	Then, any items separated by a + sign after the source prefix are considered to be of indeterminate order
+	and are sorted by character.
+	This is done because, for example, "kb:shift+alt+downArrow"
+	must be treated the same as "kb:alt+shift+downarrow".
 	"""
+	identifier = identifier.lower()
 	prefix, main = identifier.split(":", 1)
 	main = main.split("+")
 	# The order of the parts doesn't matter as far as the user is concerned,
 	# but we need them to be in a determinate order so they will match other gesture identifiers.
-	# We use Python's set ordering.
-	main = "+".join(frozenset(main))
-	return u"{0}:{1}".format(prefix, main).lower()
+	# We sort them by character.
+	main.sort()
+	main = "+".join(main)
+	return u"{0}:{1}".format(prefix, main)
 
 #: Maps registered source prefix strings to L{InputGesture} classes.
 gestureSources = weakref.WeakValueDictionary()
@@ -701,12 +800,12 @@ def registerGestureSource(source, gestureCls):
 	The specified gesture class will be used for queries regarding all gesture identifiers with the given source prefix.
 	For example, if "kb" is registered with the C{KeyboardInputGesture} class,
 	any queries for "kb:tab" or "kb(desktop):tab" will be directed to the C{KeyboardInputGesture} class.
-	If there is no exact match for the source, any parenthesised portion is stripped.
+	If there is no exact match for the source, any parenthesized portion is stripped.
 	For example, for "br(baum):d1", if "br(baum)" isn't registered,
 	"br" will be used if it is registered.
 	This registration is used, for example, to get the display text for a gesture identifier.
 	@param source: The source prefix for associated gesture identifiers.
-	@type source: basestring
+	@type source: str
 	@param gestureCls: The input gesture class.
 	@type gestureCls: L{InputGesture}
 	"""
@@ -734,9 +833,9 @@ def getDisplayTextForGestureIdentifier(identifier):
 	the gesture's source (e.g. "laptop keyboard")
 	and the specific gesture (e.g. "alt+tab").
 	@param identifier: The normalized gesture identifier in question.
-	@type identifier: basestring
+	@type identifier: str
 	@return: A tuple of (source, specificGesture).
-	@rtype: tuple of (basestring, basestring)
+	@rtype: tuple of (str, str)
 	@raise LookupError: If no display text can be determined.
 	"""
 	gcls = _getGestureClsForIdentifier(identifier)
@@ -761,3 +860,14 @@ def terminate():
 	"""
 	global manager
 	manager=None
+
+def  logTimeSinceInput():
+	"""Log the time since the last input was received.
+	This does nothing if time since input logging is disabled.
+	"""
+	if (not log.isEnabledFor(log.IO)
+		or not config.conf["debugLog"]["timeSinceInput"]
+		or not manager or not manager._lastInputTime
+	):
+		return
+	log.io("%.3f sec since input" % (time.time() - manager._lastInputTime))

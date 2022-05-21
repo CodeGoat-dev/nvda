@@ -1,6 +1,6 @@
 #NVDAObjects/window.py
 #A part of NonVisual Desktop Access (NVDA)
-#Copyright (C) 2006-2007 NVDA Contributors <http://www.nvda-project.org/>
+#Copyright (C) 2006-2019 NV Access Limited, Babbage B.V., Bill Dengler
 #This file is covered by the GNU General Public License.
 #See the file COPYING for more details.
 
@@ -12,11 +12,14 @@ import winUser
 from logHandler import log
 import controlTypes
 import api
+import config
 import displayModel
 import eventHandler
 from NVDAObjects import NVDAObject
-from NVDAObjects.behaviors import EditableText, LiveText
+from NVDAObjects.behaviors import EditableText, EditableTextWithoutAutoSelectDetection, LiveText
 import watchdog
+from locationHelper import RectLTWH
+from diffHandler import prefer_difflib
 
 re_WindowsForms=re.compile(r'^WindowsForms[0-9]*\.(.*)\.app\..*$')
 re_ATL=re.compile(r'^ATL:(.*)$')
@@ -122,24 +125,23 @@ An NVDAObject for a window
 			from .scintilla import Scintilla as newCls
 		elif windowClassName in ("AkelEditW", "AkelEditA"):
 			from .akelEdit import AkelEdit as newCls
-		elif windowClassName=="ConsoleWindowClass":
-			from .winConsole import WinConsole as newCls
-		elif windowClassName=="_WwG":
-			from .winword import WordDocument as newCls
-		elif windowClassName in ("_WwN","_WwO"):
-			from .winword import WordDocument_WwN as newCls
 		elif windowClassName=="EXCEL7":
 			from .excel import Excel7Window as newCls
 		if newCls:
 			clsList.append(newCls)
 
-		#If none of the chosen classes seem to support text editing
-		#But there is a caret currently in the window
-		#Then use the displayModelEditableText class to emulate text editing capabilities
+		# If none of the chosen classes seem to support text editing
+		# but there is a caret currently in the window,
+		# check whether this window exposes its content without using the display model.
+		# If not, use the displayModelEditableText class to emulate text editing capabilities
 		if not any(issubclass(cls,EditableText) for cls in clsList):
 			gi=winUser.getGUIThreadInfo(self.windowThreadID)
 			if gi.hwndCaret==self.windowHandle and gi.flags&winUser.GUI_CARETBLINKING:
-				clsList.append(DisplayModelEditableText)
+				if self.windowTextLineCount:
+					from .edit import UnidentifiedEdit
+					clsList.append(UnidentifiedEdit)
+				else:
+					clsList.append(DisplayModelEditableText)
 
 		clsList.append(Window)
 		super(Window,self).findOverlayClasses(clsList)
@@ -174,7 +176,7 @@ An NVDAObject for a window
 		return winUser.getWindowText(self.windowHandle)
 
 	def _get_role(self):
-		return controlTypes.ROLE_WINDOW
+		return controlTypes.Role.WINDOW
 
 	def _get_windowClassName(self):
 		if hasattr(self,"_windowClassName"):
@@ -191,7 +193,7 @@ An NVDAObject for a window
 	def _get_location(self):
 		r=ctypes.wintypes.RECT()
 		ctypes.windll.user32.GetWindowRect(self.windowHandle,ctypes.byref(r))
-		return (r.left,r.top,r.right-r.left,r.bottom-r.top)
+		return RectLTWH.fromCompatibleType(r)
 
 	def _get_displayText(self):
 		"""The text at this object's location according to the display model for this object's window."""
@@ -213,6 +215,9 @@ An NVDAObject for a window
 		textBuf=ctypes.create_unicode_buffer(textLength+2)
 		watchdog.cancellableSendMessage(self.windowHandle,winUser.WM_GETTEXT,textLength+1,textBuf)
 		return textBuf.value
+
+	def _get_windowTextLineCount(self):
+		return watchdog.cancellableSendMessage(self.windowHandle,winUser.EM_GETLINECOUNT,0,0)
 
 	def _get_processID(self):
 		if hasattr(self,"_processIDThreadID"):
@@ -274,13 +279,16 @@ An NVDAObject for a window
 		states=super(Window,self)._get_states()
 		style=self.windowStyle
 		if not style&winUser.WS_VISIBLE:
-			states.add(controlTypes.STATE_INVISIBLE)
+			states.add(controlTypes.State.INVISIBLE)
 		if style&winUser.WS_DISABLED:
-			states.add(controlTypes.STATE_UNAVAILABLE)
+			states.add(controlTypes.State.UNAVAILABLE)
 		return states
 
 	def _get_windowStyle(self):
 		return winUser.getWindowStyle(self.windowHandle)
+
+	def _get_extendedWindowStyle(self):
+		return winUser.getExtendedWindowStyle(self.windowHandle)
 
 	def _get_isWindowUnicode(self):
 		if not hasattr(self,'_isWindowUnicode'):
@@ -353,6 +361,11 @@ An NVDAObject for a window
 			ret = "exception: %s" % e
 		info.append("windowStyle: %s" % ret)
 		try:
+			ret = repr(self.extendedWindowStyle)
+		except Exception as e:
+			ret = "exception: %s" % e
+		info.append("extendedWindowStyle: %s" % ret)
+		try:
 			ret = repr(self.windowThreadID)
 		except Exception as e:
 			ret = "exception: %s" % e
@@ -378,9 +391,10 @@ class Desktop(Window):
 	def _get_name(self):
 		return _("Desktop")
 
-class DisplayModelEditableText(EditableText, Window):
 
-	role=controlTypes.ROLE_EDITABLETEXT
+class DisplayModelEditableText(EditableTextWithoutAutoSelectDetection, Window):
+
+	role=controlTypes.Role.EDITABLETEXT
 	TextInfo = displayModel.EditableTextDisplayModelTextInfo
 
 	def event_valueChange(self):
@@ -399,6 +413,12 @@ class DisplayModelLiveText(LiveText, Window):
 	def stopMonitoring(self):
 		super(DisplayModelLiveText, self).stopMonitoring()
 		displayModel.requestTextChangeNotifications(self, False)
+
+	def _get_diffAlgo(self):
+		# #12974: The display model gives us only one screen of text at a time.
+		# Use Difflib to reduce choppiness in reading.
+		return prefer_difflib()
+
 
 windowClassMap={
 	"EDIT":"Edit",

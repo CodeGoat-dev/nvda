@@ -19,11 +19,11 @@ class AppModule(appModuleHandler.AppModule):
 	msgs =[]
 	historyLength =9
 	def chooseNVDAObjectOverlayClasses(self, obj, clsList):
-		if controlTypes.STATE_READONLY in obj.states:
+		if controlTypes.State.READONLY in obj.states:
 			clsList.insert(0, MudText)
 	def __init__(self, *args, **kwargs):
 		super(AppModule, self).__init__(*args, **kwargs)
-		for n in xrange(1, self.historyLength +1):
+		for n in range(1, self.historyLength +1):
 			self.bindGesture("kb:control+%s" % n, "readMessage")
 	def script_readMessage(self,gesture):
 		num=int(gesture.mainKeyName[-1])

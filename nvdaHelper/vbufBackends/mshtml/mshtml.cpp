@@ -17,41 +17,31 @@ http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 #include <windows.h>
 #include <oleacc.h>
 #include <oleidl.h>
+#include <atlcomcli.h>
 #include <mshtml.h>
 #include <set>
 #include <string>
 #include <sstream>
 #include <vbufBase/backend.h>
 #include <vbufBase/utils.h>
+#include <remote/dllmain.h>
 #include <common/log.h>
 #include "node.h"
 #include "mshtml.h"
 
 using namespace std;
 
-HINSTANCE backendLibHandle=NULL;
-UINT WM_HTML_GETOBJECT;
-
-BOOL WINAPI DllMain(HINSTANCE hModule,DWORD reason,LPVOID lpReserved) {
-	if(reason==DLL_PROCESS_ATTACH) {
-		_CrtSetReportHookW2(_CRT_RPTHOOK_INSTALL,(_CRT_REPORT_HOOKW)NVDALogCrtReportHook);
-		backendLibHandle=hModule;
-		WM_HTML_GETOBJECT=RegisterWindowMessage(L"WM_HTML_GETOBJECT");
-	}
-	return TRUE;
-}
-
 void incBackendLibRefCount() {
 	HMODULE h=NULL;
-	BOOL res=GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,(LPCTSTR)backendLibHandle,&h);
+	BOOL res=GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,(LPCTSTR)dllHandle,&h);
 	nhAssert(res); //Result of upping backend lib ref count
-	LOG_DEBUG(L"Increased backend lib ref count");
+	LOG_DEBUG(L"Increased  remote lib ref count");
 }
 
 void decBackendLibRefCount() {
-	BOOL res=FreeLibrary(backendLibHandle);
+	BOOL res=FreeLibrary(dllHandle);
 	nhAssert(res); //Result of freeing backend lib
-	LOG_DEBUG(L"Decreased backend lib ref count");
+	LOG_DEBUG(L"Decreased remote lib ref count");
 }
 
 VBufStorage_controlFieldNode_t* MshtmlVBufBackend_t::getDeepestControlFieldNodeForHTMLElement(IHTMLElement* pHTMLElement) {
@@ -91,8 +81,13 @@ VBufStorage_controlFieldNode_t* MshtmlVBufBackend_t::getDeepestControlFieldNodeF
 	* @param siid the service iid
 	*/
 template<typename toInterface> inline HRESULT queryService(IUnknown* pUnknown, const IID& siid, toInterface** pIface) {
+	if (pIface == nullptr) {
+		LOG_DEBUG(L"pIface should not be a nullptr");
+		constexpr unsigned int CUSTOMER_FLAG = 1;
+		return MAKE_HRESULT(SEVERITY_ERROR, CUSTOMER_FLAG, 0);
+	}
 	HRESULT hRes;
-	IServiceProvider* pServProv=NULL;
+	IServiceProvider* pServProv = nullptr;
 	hRes=pUnknown->QueryInterface(IID_IServiceProvider,(void**)&pServProv);
 	if(hRes!=S_OK||!pServProv) {
 		LOG_DEBUG(L"Could not queryInterface to IServiceProvider");
@@ -100,9 +95,9 @@ template<typename toInterface> inline HRESULT queryService(IUnknown* pUnknown, c
 	}
 	hRes=pServProv->QueryService(siid,__uuidof(toInterface),(void**)pIface);
 	pServProv->Release();
-	if(hRes!=S_OK||!pIface) {
+	if( hRes != S_OK || *pIface == nullptr) {
 		LOG_DEBUG(L"Could not get requested interface");
-		*pIface=NULL;
+		*pIface = nullptr;  // if hres is not ok
 		return hRes;
 	}
 	return hRes;
@@ -412,17 +407,20 @@ inline void getCurrentStyleInfoFromHTMLDOMNode(IHTMLDOMNode* pHTMLDOMNode, bool&
 	if (pHTMLCurrentStyle) pHTMLCurrentStyle->Release();
 }
 
+// #8976: the string in the following macro  must be passed to the COM method as a BSTR 
+// otherwise the COM marshaller will try and read the BSTR length and hit either inaccessible memory or get back junk. 
+// This is seen in optimized builds of NVDA when accessing some CHM files in hh.exe.
 #define macro_addHTMLAttributeToMap(attribName,allowEmpty,attribsObj,attribsMap,tempVar,tempAttrObj) {\
-	attribsObj->getNamedItem(attribName,&tempAttrObj);\
+	attribsObj->getNamedItem(CComBSTR(attribName),&tempAttrObj);\
 	if(tempAttrObj) {\
 		VariantInit(&tempVar);\
 		tempAttrObj->get_nodeValue(&tempVar);\
 		if(tempVar.vt==VT_BSTR&&tempVar.bstrVal&&(allowEmpty||SysStringLen(tempVar.bstrVal)>0)) {\
-			attribsMap[L"HTMLAttrib::"##attribName]=tempVar.bstrVal;\
+			attribsMap[L"HTMLAttrib::" attribName]=tempVar.bstrVal;\
 		} else if(tempVar.vt==VT_I2||tempVar.vt==VT_I4) {\
 			wostringstream* s=new wostringstream;\
 			(*s)<<((tempVar.vt==VT_I2)?tempVar.iVal:tempVar.lVal);\
-			attribsMap[L"HTMLAttrib::"##attribName]=s->str();\
+			attribsMap[L"HTMLAttrib::" attribName]=s->str();\
 			delete s;\
 		}\
 		VariantClear(&tempVar);\
@@ -461,16 +459,35 @@ inline void getAttributesFromHTMLDOMNode(IHTMLDOMNode* pHTMLDOMNode,wstring& nod
 		macro_addHTMLAttributeToMap(L"colspan",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 		macro_addHTMLAttributeToMap(L"rowspan",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 		macro_addHTMLAttributeToMap(L"scope",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
+	} else if (nodeName.compare(L"OL") == 0) {
+		macro_addHTMLAttributeToMap(L"start", false, pHTMLAttributeCollection2, attribsMap, tempVar, tempAttribNode);
 	}
 	macro_addHTMLAttributeToMap(L"longdesc",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"alt",true,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"title",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"src",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
+	// Truncate the value of "src" if it contains base64 data
+	map<wstring,wstring>::iterator attribsMapIt;
+	if ((attribsMapIt = attribsMap.find(L"HTMLAttrib::src")) != attribsMap.end()) {
+		wstring str = attribsMapIt->second;
+		const wstring prefix = L"data:";
+		if (str.substr(0, prefix.length()) == prefix) {
+			const wstring needle = L"base64,";
+			wstring::size_type pos = str.find(needle);
+			if (pos != wstring::npos) {
+				str.replace(pos + needle.length(), wstring::npos, L"<truncated>");
+				attribsMap[L"HTMLAttrib::src"] = str;
+			}
+		}
+	}
 	macro_addHTMLAttributeToMap(L"onclick",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"onmousedown",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"onmouseup",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
+	macro_addHTMLAttributeToMap(L"required",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
+	macro_addHTMLAttributeToMap(L"class",true,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	//ARIA properties:
 	macro_addHTMLAttributeToMap(L"role",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
+	macro_addHTMLAttributeToMap(L"aria-roledescription",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"aria-valuenow",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"aria-sort",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"aria-labelledby",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
@@ -489,6 +506,8 @@ inline void getAttributesFromHTMLDOMNode(IHTMLDOMNode* pHTMLDOMNode,wstring& nod
 	macro_addHTMLAttributeToMap(L"aria-relevant",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"aria-busy",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	macro_addHTMLAttributeToMap(L"aria-atomic",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
+	macro_addHTMLAttributeToMap(L"aria-current",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
+	macro_addHTMLAttributeToMap(L"aria-placeholder",false,pHTMLAttributeCollection2,attribsMap,tempVar,tempAttribNode);
 	pHTMLAttributeCollection2->Release();
 }
 
@@ -878,7 +897,7 @@ VBufStorage_fieldNode_t* MshtmlVBufBackend_t::fillVBuf(VBufStorage_buffer_t* buf
 	} else if(oldNode&&oldNode->getParent()) {
 		formatState=((MshtmlVBufStorage_controlFieldNode_t*)(oldNode->getParent()))->formatState;
 	}
-if(!(formatState&FORMATSTATE_INSERTED)&&nodeName.compare(L"INS")==0) {
+	if(!(formatState&FORMATSTATE_INSERTED)&&nodeName.compare(L"INS")==0) {
 		formatState|=FORMATSTATE_INSERTED;
 	}
 	if(!(formatState&FORMATSTATE_DELETED)&&nodeName.compare(L"DEL")==0) {
@@ -912,7 +931,8 @@ if(!(formatState&FORMATSTATE_INSERTED)&&nodeName.compare(L"INS")==0) {
 	//All inner parts of a table (rows, cells etc) if they are changed must re-render the entire table.
 	//This must be done even for nodes with display:none.
 	if(tableInfo&&(nodeName.compare(L"THEAD")==0||nodeName.compare(L"TBODY")==0||nodeName.compare(L"TFOOT")==0||nodeName.compare(L"TR")==0||nodeName.compare(L"TH")==0||nodeName.compare(L"TD")==0)) {
-		parentNode->updateAncestor=tableInfo->tableNode;
+		parentNode->requiresParentUpdate=true;
+		parentNode->allowReuseInAncestorUpdate=false;
 	}
 
 	//We do not want to render any content for dontRender nodes
@@ -1000,13 +1020,39 @@ if(!(formatState&FORMATSTATE_INSERTED)&&nodeName.compare(L"INS")==0) {
 	bool isInteractive=isEditable||(!isRoot&&IAStates&STATE_SYSTEM_FOCUSABLE&&nodeName!=L"BODY"&&nodeName!=L"IFRAME")||(IAStates&STATE_SYSTEM_LINKED)||(attribsMap.find(L"HTMLAttrib::onclick")!=attribsMap.end())||(attribsMap.find(L"HTMLAttrib::onmouseup")!=attribsMap.end())||(attribsMap.find(L"HTMLAttrib::onmousedown")!=attribsMap.end())||(attribsMap.find(L"HTMLAttrib::longdesc")!=attribsMap.end());
 	//Set up numbering for lists
 	int LIIndex=0;
-	if(nodeName.compare(L"OL")==0||nodeName.compare(L"UL")==0) {
+	constexpr auto ORDERED_LIST_TAG_NODE_NAME = L"OL";
+	constexpr auto UNORDERED_LIST_TAG_NODE_NAME = L"UL";
+	constexpr auto DEFINITION_LIST_TAG_NODE_NAME = L"DL";
+	if (0 == nodeName.compare(ORDERED_LIST_TAG_NODE_NAME)
+	){
 		//Ordered lists should number their list items
 		LIIndex=1;
+		// set the list index if list has start attribute
+		auto startIter = attribsMap.find(L"HTMLAttrib::start");
+		if (startIter != attribsMap.end()
+			&& !startIter->second.empty()
+		){
+			try {
+				LIIndex = stoi(startIter->second);
+			}
+			catch (std::invalid_argument&) {
+				// if no conversion could be performed
+				constexpr auto errorStr = L"invalid_argument - Unable to convert HTMLAttrib::start value to int: ";
+				LOG_ERROR(errorStr << startIter->second)
+			}
+			catch (std::out_of_range&) {
+				// if the converted value would fall out of the range of the result type
+				// or if the underlying function(std::strtol or std::strtoll) sets errno to ERANGE.)
+				constexpr auto errorStr = L"out_of_range - Unable to convert HTMLAttrib::start value to int: ";
+				LOG_ERROR(errorStr << startIter->second)
+			}
+		}
 		LIIndexPtr=&LIIndex;
-	} else if(nodeName.compare(L"DL")==0) {
-		//Unordered lists should not be numbered
-		LIIndexPtr=NULL;
+	} else if (0 == nodeName.compare(UNORDERED_LIST_TAG_NODE_NAME)
+		|| 0 == nodeName.compare(DEFINITION_LIST_TAG_NODE_NAME)
+	) {
+		//Definition lists and unordered lists should not be numbered
+		LIIndexPtr=nullptr;
 	}
 
 	parentNode->isHidden=hidden;
@@ -1019,7 +1065,7 @@ if(!(formatState&FORMATSTATE_INSERTED)&&nodeName.compare(L"INS")==0) {
 	// Whether the name is the content of this node.
 	bool nameIsContent = (IARole == ROLE_SYSTEM_LINK || IARole == ROLE_SYSTEM_PUSHBUTTON || IARole == ROLE_SYSTEM_MENUITEM || IARole == ROLE_SYSTEM_GRAPHIC || IARole == ROLE_SYSTEM_PAGETAB
 		|| ariaRole == L"heading" || (nodeName[0] == L'H' && iswdigit(nodeName[1]))
-		|| nodeName == L"OBJECT" || nodeName == L"APPLET" || IARole == ROLE_SYSTEM_APPLICATION || IARole == ROLE_SYSTEM_DIALOG);
+		|| nodeName == L"OBJECT" || nodeName == L"APPLET" || (!isRoot && (IARole == ROLE_SYSTEM_APPLICATION || IARole == ROLE_SYSTEM_DIALOG)));
 	// True if the name definitely came from the author.
 	bool nameFromAuthor=false;
 
@@ -1040,8 +1086,8 @@ if(!(formatState&FORMATSTATE_INSERTED)&&nodeName.compare(L"INS")==0) {
 		contentString=L" ";
 		isBlock=true;
 		IARole=ROLE_SYSTEM_SEPARATOR;
-		} else if(IARole==ROLE_SYSTEM_SLIDER||IARole==ROLE_SYSTEM_PROGRESSBAR) {
-			contentString=IAValue;
+	} else if(IARole==ROLE_SYSTEM_SLIDER||IARole==ROLE_SYSTEM_PROGRESSBAR) {
+		contentString=IAValue;
 	} else if ((nodeName.compare(L"OBJECT")==0 || nodeName.compare(L"APPLET")==0)) {
 		isBlock=true;
 		contentString=L" ";
@@ -1139,8 +1185,10 @@ if(!(formatState&FORMATSTATE_INSERTED)&&nodeName.compare(L"INS")==0) {
 	if (!nameIsContent && !IAName.empty() && (nameFromAuthor || (
 		attribsMap.find(L"HTMLAttrib::aria-label") != attribsMap.end() || attribsMap.find(L"HTMLAttrib::aria-labelledby") != attribsMap.end()
 		|| attribsMap.find(L"HTMLAttrib::title") != attribsMap.end() || attribsMap.find(L"HTMLAttrib::alt") != attribsMap.end()
-	)))
+	))) {
 		attribsMap[L"name"]=IAName;
+		attribsMap[L"alwaysReportName"]=L"true";
+	}
 
 	//Add a textNode to the buffer containing any special content retreaved
 	if(!hidden&&!contentString.empty()) {
@@ -1239,6 +1287,8 @@ if(!(formatState&FORMATSTATE_INSERTED)&&nodeName.compare(L"INS")==0) {
 				previousNode=buffer->addTextFieldNode(parentNode,NULL,contentString);
 				fillTextFormattingForNode(pHTMLDOMNode,previousNode);
 			}
+			// If any descendant is invalidated, this may change whether this node has no useful content.
+			parentNode->alwaysRerenderDescendants=true;
 		}
 	}
 
@@ -1309,10 +1359,15 @@ if(!(formatState&FORMATSTATE_INSERTED)&&nodeName.compare(L"INS")==0) {
 	return parentNode;
 }
 
+UINT getHTMLWindowMessage() {
+	static UINT wm=RegisterWindowMessage(L"WM_HTML_GETOBJECT");
+	return wm;
+}
+
 void MshtmlVBufBackend_t::render(VBufStorage_buffer_t* buffer, int docHandle, int ID, VBufStorage_controlFieldNode_t* oldNode) {
 	LOG_DEBUG(L"Rendering from docHandle "<<docHandle<<L", ID "<<ID<<L", in to buffer at "<<buffer);
 	LOG_DEBUG(L"Getting document from window "<<docHandle);
-	LRESULT res=SendMessage((HWND)docHandle,WM_HTML_GETOBJECT,0,0);
+	LRESULT res=SendMessage((HWND)UlongToHandle(docHandle),getHTMLWindowMessage(),0,0);
 	if(res==0) {
 		LOG_DEBUG(L"Error getting document using WM_HTML_GETOBJECT");
 		return;
@@ -1362,7 +1417,7 @@ MshtmlVBufBackend_t::~MshtmlVBufBackend_t() {
 	LOG_DEBUG(L"Mshtml backend destructor");
 }
 
-extern "C" __declspec(dllexport) VBufBackend_t* VBufBackend_create(int docHandle, int ID) {
+VBufBackend_t* MshtmlVBufBackend_t_createInstance(int docHandle, int ID) {
 	VBufBackend_t* backend=new MshtmlVBufBackend_t(docHandle,ID);
 	LOG_DEBUG(L"Created new backend at "<<backend);
 	return backend;

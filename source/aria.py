@@ -1,85 +1,112 @@
-#aria.py
-#A part of NonVisual Desktop Access (NVDA)
-#Copyright (C) 2009-2014 NV Access Limited
-#This file is covered by the GNU General Public License.
-#See the file COPYING for more details.
+# A part of NonVisual Desktop Access (NVDA)
+# Copyright (C) 2009-2019 NV Access Limited, Leonard de Ruijter
+# This file is covered by the GNU General Public License.
+# See the file COPYING for more details.
 
+from typing import Dict
+from enum import Enum
 import controlTypes
 
-ariaRolesToNVDARoles={
-	"description":controlTypes.ROLE_STATICTEXT,
-	"search":controlTypes.ROLE_SECTION,
-	"alert":controlTypes.ROLE_ALERT,
-	"alertdialog":controlTypes.ROLE_DIALOG,
-	"application":controlTypes.ROLE_APPLICATION,
-	"button":controlTypes.ROLE_BUTTON,
-	"checkbox":controlTypes.ROLE_CHECKBOX,
-	"columnheader":controlTypes.ROLE_TABLECOLUMNHEADER,
-	"combobox":controlTypes.ROLE_COMBOBOX,
-	"definition":controlTypes.ROLE_LISTITEM,
-	"dialog":controlTypes.ROLE_DIALOG,
-	"directory":controlTypes.ROLE_LIST,
-	"document":controlTypes.ROLE_DOCUMENT,
-	"form":controlTypes.ROLE_FORM,
-	"grid":controlTypes.ROLE_TABLE,
-	"gridcell":controlTypes.ROLE_TABLECELL,
-	"group":controlTypes.ROLE_GROUPING,
-	"heading":controlTypes.ROLE_HEADING,
-	"img":controlTypes.ROLE_GRAPHIC,
-	"link":controlTypes.ROLE_LINK,
-	"list":controlTypes.ROLE_LIST,
-	"listbox":controlTypes.ROLE_LIST,
-	"listitem":controlTypes.ROLE_LISTITEM,
-	"menu":controlTypes.ROLE_POPUPMENU,
-	"menubar":controlTypes.ROLE_MENUBAR,
-	"menuitem":controlTypes.ROLE_MENUITEM,
-	"menuitemcheckbox":controlTypes.ROLE_MENUITEM,
-	"menuitemradio":controlTypes.ROLE_MENUITEM,
-	"option":controlTypes.ROLE_LISTITEM,
-	"progressbar":controlTypes.ROLE_PROGRESSBAR,
-	"radio":controlTypes.ROLE_RADIOBUTTON,
-	"radiogroup":controlTypes.ROLE_GROUPING,
-	"row":controlTypes.ROLE_TABLEROW,
-	"rowgroup":controlTypes.ROLE_GROUPING,
-	"rowheader":controlTypes.ROLE_TABLEROWHEADER,
-	"separator":controlTypes.ROLE_SEPARATOR,
-	"scrollbar":controlTypes.ROLE_SCROLLBAR,
-	"slider":controlTypes.ROLE_SLIDER,
-	"spinbutton":controlTypes.ROLE_SPINBUTTON,
-	"status":controlTypes.ROLE_STATUSBAR,
-	"tab":controlTypes.ROLE_TAB,
-	"tablist":controlTypes.ROLE_TABCONTROL,
-	"tabpanel":controlTypes.ROLE_PROPERTYPAGE,
-	"textbox":controlTypes.ROLE_EDITABLETEXT,
-	"toolbar":controlTypes.ROLE_TOOLBAR,
-	"tooltip":controlTypes.ROLE_TOOLTIP,
-	"tree":controlTypes.ROLE_TREEVIEW,
-	"treegrid":controlTypes.ROLE_TREEVIEW,
-	"treeitem":controlTypes.ROLE_TREEVIEWITEM,
+ariaRolesToNVDARoles: Dict[str, int] = {
+	"description": controlTypes.Role.STATICTEXT,  # Not in ARIA 1.1 spec
+	"alert":controlTypes.Role.ALERT,
+	"alertdialog":controlTypes.Role.DIALOG,
+	"article": controlTypes.Role.ARTICLE,
+	"application":controlTypes.Role.APPLICATION,
+	"button":controlTypes.Role.BUTTON,
+	"checkbox":controlTypes.Role.CHECKBOX,
+	"columnheader":controlTypes.Role.TABLECOLUMNHEADER,
+	"combobox":controlTypes.Role.COMBOBOX,
+	"definition":controlTypes.Role.LISTITEM,
+	"dialog":controlTypes.Role.DIALOG,
+	"directory":controlTypes.Role.LIST,
+	"document":controlTypes.Role.DOCUMENT,
+	"figure": controlTypes.Role.FIGURE,
+	"form":controlTypes.Role.FORM,
+	"grid":controlTypes.Role.TABLE,
+	"gridcell":controlTypes.Role.TABLECELL,
+	"group":controlTypes.Role.GROUPING,
+	"heading":controlTypes.Role.HEADING,
+	"img":controlTypes.Role.GRAPHIC,
+	"link":controlTypes.Role.LINK,
+	"list":controlTypes.Role.LIST,
+	"listbox":controlTypes.Role.LIST,
+	"listitem":controlTypes.Role.LISTITEM,
+	"mark": controlTypes.Role.MARKED_CONTENT,
+	"menu":controlTypes.Role.POPUPMENU,
+	"menubar":controlTypes.Role.MENUBAR,
+	"menuitem":controlTypes.Role.MENUITEM,
+	"menuitemcheckbox":controlTypes.Role.MENUITEM,
+	"menuitemradio":controlTypes.Role.MENUITEM,
+	"option":controlTypes.Role.LISTITEM,
+	"progressbar":controlTypes.Role.PROGRESSBAR,
+	"radio":controlTypes.Role.RADIOBUTTON,
+	"radiogroup":controlTypes.Role.GROUPING,
+	"region": controlTypes.Role.REGION,
+	"row":controlTypes.Role.TABLEROW,
+	"rowgroup":controlTypes.Role.GROUPING,
+	"rowheader":controlTypes.Role.TABLEROWHEADER,
+	"search": controlTypes.Role.LANDMARK,
+	"separator":controlTypes.Role.SEPARATOR,
+	"scrollbar":controlTypes.Role.SCROLLBAR,
+	"slider":controlTypes.Role.SLIDER,
+	"spinbutton":controlTypes.Role.SPINBUTTON,
+	"status":controlTypes.Role.STATUSBAR,
+	"tab":controlTypes.Role.TAB,
+	"tablist":controlTypes.Role.TABCONTROL,
+	"tabpanel":controlTypes.Role.PROPERTYPAGE,
+	"textbox":controlTypes.Role.EDITABLETEXT,
+	"toolbar":controlTypes.Role.TOOLBAR,
+	"tooltip":controlTypes.Role.TOOLTIP,
+	"tree":controlTypes.Role.TREEVIEW,
+	"treegrid":controlTypes.Role.TREEVIEW,
+	"treeitem":controlTypes.Role.TREEVIEWITEM,
 }
 
-ariaSortValuesToNVDAStates={
-	'descending':controlTypes.STATE_SORTED_DESCENDING,
-	'ascending':controlTypes.STATE_SORTED_ASCENDING,
-	'other':controlTypes.STATE_SORTED,
+ariaSortValuesToNVDAStates: Dict[str, controlTypes.State] = {
+	'descending':controlTypes.State.SORTED_DESCENDING,
+	'ascending':controlTypes.State.SORTED_ASCENDING,
+	'other':controlTypes.State.SORTED,
 }
 
-landmarkRoles = {
+landmarkRoles: Dict[str, str] = {
 	# Translators: Reported for the banner landmark, normally found on web pages.
-	"banner": _("banner"),
+	"banner": pgettext("aria", "banner"),
 	# Translators: Reported for the complementary landmark, normally found on web pages.
-	"complementary": _("complementary"),
+	"complementary": pgettext("aria", "complementary"),
 	# Translators: Reported for the contentinfo landmark, normally found on web pages.
-	"contentinfo": _("content info"),
+	"contentinfo": pgettext("aria", "content info"),
 	# Translators: Reported for the main landmark, normally found on web pages.
-	"main": _("main"),
+	"main": pgettext("aria", "main"),
 	# Translators: Reported for the navigation landmark, normally found on web pages.
-	"navigation": _("navigation"),
+	"navigation": pgettext("aria", "navigation"),
 	# Translators: Reported for the search landmark, normally found on web pages.
-	"search": _("search"),
+	"search": pgettext("aria", "search"),
 	# Translators: Reported for the form landmark, normally found on web pages.
-	"form": _("form"),
-	# Strictly speaking, region isn't a landmark, but it is very similar.
-	# Translators: Reported for a significant region, normally found on web pages.
-	"region": _("region"),
+	"form": pgettext("aria", "form"),
 }
+
+ariaRolesToNVDARoles.update({
+	role: controlTypes.Role.LANDMARK
+	for role in landmarkRoles
+	if role not in ariaRolesToNVDARoles
+})
+
+htmlNodeNameToAriaRoles: Dict[str, str] = {
+	"header": "banner",
+	"nav": "navigation",
+	"main": "main",
+	"footer": "contentinfo",
+	"article": "article",
+	"section": "region",
+	"aside": "complementary",
+	"dialog": "dialog",
+	"figure": "figure",
+	"mark": "mark",
+}
+
+
+class AriaLivePoliteness(str, Enum):
+	OFF = "off"
+	POLITE = "polite"
+	ASSERTIVE = "assertive"

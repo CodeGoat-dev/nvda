@@ -9,12 +9,19 @@ EXPORTS
 	nvdaInProcUtils_registerNVDAProcess
 	nvdaInProcUtils_unregisterNVDAProcess
 	nvdaInProcUtils_sysListView32_getGroupInfo
+	nvdaInProcUtils_sysListView32_getColumnContent
+	nvdaInProcUtils_sysListView32_getColumnLocation
+	nvdaInProcUtils_sysListView32_getColumnHeader
+	nvdaInProcUtils_sysListView32_getColumnOrderArray
 	nvdaInProcUtils_dumpOnCrash
 	nvdaInProcUtils_IA2Text_findContentDescendant
+	nvdaInProcUtils_getTextFromIAccessible
 	nvdaInProcUtils_getActiveObject
 	nvdaInProcUtils_winword_expandToLine
 	nvdaInProcUtils_winword_getTextInRange
 	nvdaInProcUtils_winword_moveByLine
+	nvdaInProcUtils_outlook_getMAPIProp
+	nvdaInProcUtils_excel_getCellInfos
 	VBuf_createBuffer
 	VBuf_destroyBuffer
 	VBuf_findNodeByAttributes
@@ -22,8 +29,6 @@ EXPORTS
 	VBuf_getFieldNodeOffsets
 	VBuf_getIdentifierFromControlFieldNode
 	VBuf_getLineOffsets
-	VBuf_getNativeHandleForNode
-	VBuf_getNodeForNativeHandle
 	VBuf_getSelectionOffsets
 	VBuf_getTextInRange
 	VBuf_getTextLength
@@ -51,8 +56,14 @@ EXPORTS
 	displayModel_getCaretRect
 	displayModel_requestTextChangeNotificationsForWindow
 	calculateWordOffsets
+	calculateCharacterOffsets
 	findWindowWithClassInThread
 	registerUIAProperty
+	registerUIAAnnotationType
 	dllImportTableHooks_hookSingle
 	dllImportTableHooks_unhookSingle
 	audioDucking_shouldDelay
+	logMessage
+	getOleClipboardText
+	_nvdaControllerInternal_reportLiveRegion
+	_nvdaControllerInternal_openConfigDirectory

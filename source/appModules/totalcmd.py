@@ -8,6 +8,7 @@ import appModuleHandler
 from NVDAObjects.IAccessible import IAccessible
 import speech
 import controlTypes
+import ui
 
 oldActivePannel=0
 
@@ -32,16 +33,16 @@ class TCList(IAccessible):
 				if obj.windowClassName!="TDrivePanel":
 					counter+=1
 			if counter==2:
-				speech.speakMessage(_("left"))
+				ui.message(_("left"))
 			else:
-				speech.speakMessage(_("right"))
+				ui.message(_("right"))
 		super(TCList,self).event_gainFocus()
 
 	def reportFocus(self):
 		if self.name:
 			speakList=[]
-			if controlTypes.STATE_SELECTED in self.states:
-				speakList.append(controlTypes.stateLabels[controlTypes.STATE_SELECTED])
+			if controlTypes.State.SELECTED in self.states:
+				speakList.append(controlTypes.State.SELECTED.displayString)
 			speakList.append(self.name.split("\\")[-1])
 			speech.speakMessage(" ".join(speakList))
 		else:

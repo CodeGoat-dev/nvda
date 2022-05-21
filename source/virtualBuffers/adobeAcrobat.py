@@ -5,6 +5,7 @@
 #Copyright (C) 2009-2012 NV Access Limited, Aleksey Sadovoy
 
 from . import VirtualBuffer, VirtualBufferTextInfo
+import browseMode
 import controlTypes
 import NVDAObjects.IAccessible
 from NVDAObjects.IAccessible.adobeAcrobat import normalizeStdName, AcrobatNode
@@ -17,6 +18,29 @@ import languageHandler
 
 class AdobeAcrobat_TextInfo(VirtualBufferTextInfo):
 
+	def _getBoundingRectFromOffset(self,offset):
+		formatFieldStart, formatFieldEnd = self._getUnitOffsets(textInfos.UNIT_FORMATFIELD, offset)
+		# The format field starts at the first character.
+		for field in reversed(self._getFieldsInRange(formatFieldStart, formatFieldStart+1)):
+			if not (isinstance(field, textInfos.FieldCommand) and field.command == "formatChange"):
+				# This is no format field.
+				continue
+			attrs = field.field
+			indexInParent = attrs.get("_indexInParent")
+			if indexInParent is None:
+				continue
+			try:
+				obj = self._getNVDAObjectFromOffset(offset).getChild(indexInParent)
+			except IndexError:
+				obj = None
+			if not obj:
+				continue
+			if not obj.location:
+				# Older versions of Adobe Reader have per word objects, but they don't expose a location
+				break
+			return obj.location
+		return super(AdobeAcrobat_TextInfo, self)._getBoundingRectFromOffset(offset)
+
 	def _normalizeControlField(self,attrs):
 		stdName = attrs.get("acrobat::stdname", "")
 		try:
@@ -25,19 +49,21 @@ class AdobeAcrobat_TextInfo(VirtualBufferTextInfo):
 			role, level = None, None
 
 		if not role:
-			accRole=attrs['IAccessible::role']
-			if accRole.isdigit():
-				accRole=int(accRole)
-			else:
-				accRole = accRole.lower()
-			role=IAccessibleHandler.IAccessibleRolesToNVDARoles.get(accRole,controlTypes.ROLE_UNKNOWN)
+			role = IAccessibleHandler.NVDARoleFromAttr(attrs['IAccessible::role'])
+		states = IAccessibleHandler.getStatesSetFromIAccessibleAttrs(attrs)
+		role, states = controlTypes.transformRoleStates(role, states)
 
-		states=set(IAccessibleHandler.IAccessibleStatesToNVDAStates[x] for x in [1<<y for y in xrange(32)] if int(attrs.get('IAccessible::state_%s'%x,0)) and x in IAccessibleHandler.IAccessibleStatesToNVDAStates)
-
-		if role == controlTypes.ROLE_EDITABLETEXT and {controlTypes.STATE_READONLY, controlTypes.STATE_FOCUSABLE, controlTypes.STATE_LINKED} <= states:
+		if (
+			role == controlTypes.Role.EDITABLETEXT
+			and states.issuperset({
+				controlTypes.State.READONLY,
+				controlTypes.State.FOCUSABLE,
+				controlTypes.State.LINKED
+			})
+		):
 			# HACK: Acrobat sets focus states on text nodes beneath links,
 			# making them appear as read only editable text fields.
-			states.difference_update({controlTypes.STATE_FOCUSABLE, controlTypes.STATE_FOCUSED})
+			states.difference_update({controlTypes.State.FOCUSABLE, controlTypes.State.FOCUSED})
 
 		attrs['role']=role
 		attrs['states']=states
@@ -48,6 +74,10 @@ class AdobeAcrobat_TextInfo(VirtualBufferTextInfo):
 	def _normalizeFormatField(self, attrs):
 		try:
 			attrs["language"] = languageHandler.normalizeLanguage(attrs["language"])
+		except KeyError:
+			pass
+		try:
+			attrs["_indexInParent"] = int(attrs["_indexInParent"])
 		except KeyError:
 			pass
 		return attrs
@@ -68,7 +98,7 @@ class AdobeAcrobat(VirtualBuffer):
 		root=self.rootNVDAObject
 		if not root:
 			return False
-		if not winUser.isWindow(root.windowHandle) or root.role == controlTypes.ROLE_UNKNOWN:
+		if not winUser.isWindow(root.windowHandle) or root.role == controlTypes.Role.UNKNOWN:
 			return False
 		return True
 
@@ -120,3 +150,10 @@ class AdobeAcrobat(VirtualBuffer):
 			return nextHandler()
 		if not self._handleScrollTo(obj):
 			return nextHandler()
+
+	def _get_ElementsListDialog(self):
+		return ElementsListDialog
+
+class ElementsListDialog(browseMode.ElementsListDialog):
+
+	ELEMENT_TYPES=browseMode.ElementsListDialog.ELEMENT_TYPES[0:2]

@@ -17,6 +17,7 @@ http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 #include <windows.h>
 #include <oleacc.h>
 #include <common/log.h>
+#include <common/ia2utils.h>
 #include <remote/nvdaHelperRemote.h>
 #include <vbufBase/backend.h>
 #include "lotusNotesRichText.h"
@@ -44,11 +45,11 @@ void CALLBACK lotusNotesRichTextVBufBackend_t::renderThread_winEventProcHook(HWI
 		return;
 	}
 
-	int docHandle=(int)hwnd;
+	int docHandle=HandleToUlong(hwnd);
 	int ID=childID;
 	VBufBackend_t* backend=NULL;
 	for(VBufBackendSet_t::iterator i=runningBackends.begin();i!=runningBackends.end();++i) {
-		HWND rootWindow=(HWND)((*i)->rootDocHandle);
+		HWND rootWindow=(HWND)UlongToHandle(((*i)->rootDocHandle));
 		if(rootWindow==hwnd) {
 			backend=(*i);
 		}
@@ -154,7 +155,7 @@ int id=accChildID;
 void lotusNotesRichTextVBufBackend_t::render(VBufStorage_buffer_t* buffer, int docHandle, int ID, VBufStorage_controlFieldNode_t* oldNode) {
 	DWORD_PTR res=0;
 	//Get an IAccessible by sending WM_GETOBJECT directly to bypass any proxying, to speed things up.
-	if(SendMessageTimeout((HWND)docHandle,WM_GETOBJECT,0,OBJID_CLIENT,SMTO_ABORTIFHUNG,2000,&res)==0||res==0) {
+	if(SendMessageTimeout((HWND)UlongToHandle(docHandle),WM_GETOBJECT,0,OBJID_CLIENT,SMTO_ABORTIFHUNG,2000,&res)==0||res==0) {
 		//Failed to send message or window does not support IAccessible
 		return;
 	}
@@ -170,12 +171,18 @@ void lotusNotesRichTextVBufBackend_t::render(VBufStorage_buffer_t* buffer, int d
 		VBufStorage_fieldNode_t* previousNode=NULL;
 		long childCount=0;
 		pacc->get_accChildCount(&childCount);
-		VARIANT* varChildren=(VARIANT*)malloc(sizeof(VARIANT)*childCount);
-		HRESULT hRes;
-		hRes=AccessibleChildren(pacc,0,childCount,varChildren,&childCount);
-		for(int i=0;i<childCount;++i) {
-			if(varChildren[i].vt==VT_I4) {
-				previousNode=this->renderControlContent(buffer,parentNode,previousNode,docHandle,pacc,varChildren[i].lVal);
+
+		auto [varChildren, hres] = getAccessibleChildren(pacc, 0, childCount);
+		for(CComVariant& child : varChildren) {
+			if(VT_I4 == child.vt) {
+				previousNode = this->renderControlContent(
+					buffer,
+					parentNode,
+					previousNode,
+					docHandle,
+					pacc,
+					child.lVal
+				);
 			}
 		}
 	} else {
@@ -187,14 +194,7 @@ void lotusNotesRichTextVBufBackend_t::render(VBufStorage_buffer_t* buffer, int d
 lotusNotesRichTextVBufBackend_t::lotusNotesRichTextVBufBackend_t(int docHandle, int ID): VBufBackend_t(docHandle,ID) {
 }
 
-extern "C" __declspec(dllexport) VBufBackend_t* VBufBackend_create(int docHandle, int ID) {
+VBufBackend_t* lotusNotesRichTextVBufBackend_t_createInstance(int docHandle, int ID) {
 	VBufBackend_t* backend=new lotusNotesRichTextVBufBackend_t(docHandle,ID);
 	return backend;
-}
-
-BOOL WINAPI DllMain(HINSTANCE hModule,DWORD reason,LPVOID lpReserved) {
-	if(reason==DLL_PROCESS_ATTACH) {
-		_CrtSetReportHookW2(_CRT_RPTHOOK_INSTALL,(_CRT_REPORT_HOOKW)NVDALogCrtReportHook);
-	}
-	return true;
 }

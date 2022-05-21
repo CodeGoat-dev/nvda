@@ -1,9 +1,13 @@
-#compoundDocuments.py
-#A part of NonVisual Desktop Access (NVDA)
-#This file is covered by the GNU General Public License.
-#See the file COPYING for more details.
-#Copyright (C) 2010-2013 NV Access Limited
+# A part of NonVisual Desktop Access (NVDA)
+# This file is covered by the GNU General Public License.
+# See the file COPYING for more details.
+# Copyright (C) 2010-2021 NV Access Limited, Bram Duvigneau
+from typing import (
+	Optional,
+	Dict,
+)
 
+import textUtils
 import winUser
 import textInfos
 import controlTypes
@@ -17,6 +21,9 @@ from NVDAObjects import behaviors
 import api
 import config
 import review
+import vision
+from logHandler import log
+from locationHelper import RectLTWH
 
 class CompoundTextInfo(textInfos.TextInfo):
 
@@ -41,7 +48,9 @@ class CompoundTextInfo(textInfos.TextInfo):
 			# Aside from being pointless, we don't want a collapsed end object, as this will cause bogus control fields to be emitted.
 			try:
 				self._end, self._endObj = self._findNextContent(self._endObj, moveBack=True)
-				self._end.move(textInfos.UNIT_OFFSET, 1)
+				# _end is now on the last character, but we want it collapsed after this.
+				self._end.move(textInfos.UNIT_OFFSET, 1, endPoint="end")
+				self._end.collapse(end=True)
 			except LookupError:
 				pass
 
@@ -120,40 +129,72 @@ class CompoundTextInfo(textInfos.TextInfo):
 	def _get_pointAtStart(self):
 		return self._start.pointAtStart
 
-	def _isObjectEditableText(self, obj):
-		return obj.role in (controlTypes.ROLE_PARAGRAPH, controlTypes.ROLE_EDITABLETEXT)
+	def _isObjectEditableText(self, obj: NVDAObject) -> bool:
+		return obj.role in (
+			controlTypes.Role.PARAGRAPH,
+			controlTypes.Role.EDITABLETEXT,
+		)
 
-	def _getControlFieldForObject(self, obj, ignoreEditableText=True):
+	def _isNamedlinkDestination(self, obj: NVDAObject) -> bool:
+		return (  # Named link destination, not a link that can be activated.
+			obj.role == controlTypes.Role.LINK
+			and controlTypes.State.LINKED not in obj.states
+		)
+
+	def _getControlFieldForObject(self, obj: NVDAObject, ignoreEditableText=True):
 		if ignoreEditableText and self._isObjectEditableText(obj):
 			# This is basically just a text node.
 			return None
 		role = obj.role
 		states = obj.states
-		if role == controlTypes.ROLE_LINK and controlTypes.STATE_LINKED not in states:
+		if role == controlTypes.Role.LINK and controlTypes.State.LINKED not in states:
 			# Named link destination, not a link that can be activated.
 			return None
 		field = textInfos.ControlField()
 		field["role"] = role
+		field['roleText'] = obj.roleText
+		field['description'] = obj.description
+		field['_description-from'] = obj.descriptionFrom
+		field['hasDetails'] = obj.hasDetails
 		# The user doesn't care about certain states, as they are obvious.
-		states.discard(controlTypes.STATE_EDITABLE)
-		states.discard(controlTypes.STATE_MULTILINE)
-		states.discard(controlTypes.STATE_FOCUSED)
+		states.discard(controlTypes.State.EDITABLE)
+		states.discard(controlTypes.State.MULTILINE)
+		states.discard(controlTypes.State.FOCUSED)
 		field["states"] = states
-		field["name"] = obj.name
 		field["_childcount"] = obj.childCount
 		field["level"] = obj.positionInfo.get("level")
-		if role == controlTypes.ROLE_TABLE:
+		if role == controlTypes.Role.TABLE:
 			field["table-id"] = 1 # FIXME
 			field["table-rowcount"] = obj.rowCount
 			field["table-columncount"] = obj.columnCount
-		if role in (controlTypes.ROLE_TABLECELL, controlTypes.ROLE_TABLECOLUMNHEADER, controlTypes.ROLE_TABLEROWHEADER):
+		if role in (controlTypes.Role.TABLECELL, controlTypes.Role.TABLECOLUMNHEADER, controlTypes.Role.TABLEROWHEADER):
 			field["table-id"] = 1 # FIXME
 			field["table-rownumber"] = obj.rowNumber
 			field["table-columnnumber"] = obj.columnNumber
+			# Row/column span is not supported by all implementations (e.g. LibreOffice)
+			try:
+				field['table-rowsspanned']=obj.rowSpan
+			except NotImplementedError:
+				log.debug("Row span not supported")
+				pass
+			try:
+				field['table-columnsspanned']=obj.columnSpan
+			except NotImplementedError:
+				log.debug("Column span not supported")
+				pass
 		return field
 
 	def __eq__(self, other):
+		if self is other:
+			return True
+		if type(self) is not type(other):
+			return False
 		return self._start == other._start and self._startObj == other._startObj and self._end == other._end and self._endObj == other._endObj
+
+	# As __eq__ was defined on this class, we must provide __hash__ to remain hashable.
+	# The default hash implementation is fine for  our purposes.
+	def __hash__(self):
+		return super().__hash__()
 
 	def __ne__(self, other):
 		return not self == other
@@ -195,11 +236,11 @@ class TreeCompoundTextInfo(CompoundTextInfo):
 			self._startObj = self._endObj = self.obj.caretObject
 			# Find the objects which start and end the selection.
 			tempObj = self._startObj
-			while tempObj and controlTypes.STATE_SELECTED in tempObj.states:
+			while tempObj and controlTypes.State.SELECTED in tempObj.states:
 				self._startObj = tempObj
 				tempObj = tempObj.flowsFrom
 			tempObj = self._endObj
-			while tempObj and controlTypes.STATE_SELECTED in tempObj.states:
+			while tempObj and controlTypes.State.SELECTED in tempObj.states:
 				self._endObj = tempObj
 				tempObj = tempObj.flowsTo
 			self._start = self._startObj.makeTextInfo(position)
@@ -211,7 +252,7 @@ class TreeCompoundTextInfo(CompoundTextInfo):
 			raise NotImplementedError
 
 	def _findContentDescendant(self, obj):
-		while obj and controlTypes.STATE_FOCUSABLE not in obj.states:
+		while obj and controlTypes.State.FOCUSABLE not in obj.states:
 			obj = obj.firstChild
 		return obj
 
@@ -234,9 +275,9 @@ class TreeCompoundTextInfo(CompoundTextInfo):
 		# Get the number of embeds before the start.
 		# The index is 0 based, so this is the index of the first embed after start.
 		text = info._getTextRange(0, info._startOffset)
-		return text.count(u"\uFFFC")
+		return text.count(textUtils.OBJ_REPLACEMENT_CHAR)
 
-	def getTextWithFields(self, formatConfig=None):
+	def getTextWithFields(self, formatConfig: Optional[Dict] = None) -> textInfos.TextInfo.TextWithFieldsT:
 		# Get the initial control fields.
 		fields = []
 		rootObj = self.obj.rootNVDAObject
@@ -249,22 +290,24 @@ class TreeCompoundTextInfo(CompoundTextInfo):
 
 		embedIndex = None
 		for ti in self._getTextInfos():
-			for field in ti._iterTextWithEmbeddedObjects(True, formatConfig=formatConfig):
-				if isinstance(field, basestring):
-					fields.append(field)
-				elif isinstance(field, int): # Embedded object
+			for textWithEmbeddedObjectsItem in ti._iterTextWithEmbeddedObjects(True, formatConfig=formatConfig):
+				if isinstance(textWithEmbeddedObjectsItem, int):  # Embedded object
 					if embedIndex is None:
 						embedIndex = self._getFirstEmbedIndex(ti)
 					else:
 						embedIndex += 1
-					field = ti.obj.getChild(embedIndex)
-					controlField = self._getControlFieldForObject(field, ignoreEditableText=False)
-					controlField["alwaysReportName"] = True
-					fields.extend((textInfos.FieldCommand("controlStart", controlField),
-						u"\uFFFC",
-						textInfos.FieldCommand("controlEnd", None)))
-				else:
-					fields.append(field)
+					childObject: NVDAObject = ti.obj.getChild(embedIndex)
+					controlField = self._getControlFieldForObject(childObject, ignoreEditableText=False)
+					controlField["content"] = childObject.name
+					fields.extend((
+						textInfos.FieldCommand("controlStart", controlField),
+						textUtils.OBJ_REPLACEMENT_CHAR,
+						textInfos.FieldCommand("controlEnd", None)
+					))
+				else:  # str or fieldCommand
+					if not isinstance(textWithEmbeddedObjectsItem, (str, textInfos.FieldCommand)):
+						log.error(f"Unexpected type: {textWithEmbeddedObjectsItem!r}")
+					fields.append(textWithEmbeddedObjectsItem)
 		return fields
 
 	def _findNextContent(self, origin, moveBack=False):
@@ -301,7 +344,13 @@ class TreeCompoundTextInfo(CompoundTextInfo):
 			return selfTi.compareEndPoints(otherTi, which)
 
 		# Different objects, so we have to compare the hierarchical positions of the objects.
-		return cmp(self._getObjectPosition(selfObj), other._getObjectPosition(otherObj))
+		# cmp no longer exists in Python3.
+	# Per the Python3 What's New docs:
+	# cmp can be replaced with (a>b)-(a<b).
+	# In other words, False and True coerce to 0 and 1 respectively.
+		selfPosition=self._getObjectPosition(selfObj)
+		otherPosition=other._getObjectPosition(otherObj)
+		return (selfPosition>otherPosition)-(selfPosition<otherPosition)
 
 	def expand(self, unit):
 		if unit == textInfos.UNIT_READINGCHUNK:
@@ -383,6 +432,17 @@ class TreeCompoundTextInfo(CompoundTextInfo):
 
 		return direction - remainingMovement
 
+	def _get_boundingRects(self):
+		rects = []
+		for ti in self._getTextInfos():
+			if ti.obj.hasIrrelevantLocation:
+				continue
+			try:
+				rects.extend(ti.boundingRects)
+			except LookupError:
+				continue
+		return rects
+
 class CompoundDocument(EditableText, DocumentTreeInterceptor):
 	TextInfo = TreeCompoundTextInfo
 
@@ -407,7 +467,7 @@ class CompoundDocument(EditableText, DocumentTreeInterceptor):
 		return eventHandler.lastQueuedFocusObject
 
 	def event_treeInterceptor_gainFocus(self):
-		speech.speakObject(self.rootNVDAObject, reason=controlTypes.REASON_FOCUS)
+		speech.speakObject(self.rootNVDAObject, reason=controlTypes.OutputReason.FOCUS)
 		try:
 			info = self.makeTextInfo(textInfos.POSITION_SELECTION)
 		except RuntimeError:
@@ -415,15 +475,16 @@ class CompoundDocument(EditableText, DocumentTreeInterceptor):
 		else:
 			if info.isCollapsed:
 				info.expand(textInfos.UNIT_LINE)
-				speech.speakTextInfo(info, unit=textInfos.UNIT_LINE, reason=controlTypes.REASON_CARET)
+				speech.speakTextInfo(info, unit=textInfos.UNIT_LINE, reason=controlTypes.OutputReason.CARET)
 			else:
-				speech.speakSelectionMessage(_("selected %s"), info.text)
+				speech.speakPreselectedText(info.text)
 			braille.handler.handleGainFocus(self)
 			self.initAutoSelectDetection()
 
 	def event_caret(self, obj, nextHandler):
 		self.detectPossibleSelectionChange()
 		braille.handler.handleCaretMove(self)
+		vision.handler.handleCaretMove(self)
 		caret = self.makeTextInfo(textInfos.POSITION_CARET)
 		review.handleCaretMove(caret)
 

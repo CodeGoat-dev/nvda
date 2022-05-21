@@ -1,8 +1,9 @@
+# -*- coding: UTF-8 -*-
 #keyCommandsDoc.py
 #A part of NonVisual Desktop Access (NVDA)
 #This file is covered by the GNU General Public License.
 #See the file COPYING for more details.
-#Copyright (C) 2010 James Teh <jamie@jantrid.net>
+#Copyright (C) 2010-2019 NV Access Limited, Mesar Hameed, Takuya Nishimoto
 
 """Utilities related to NVDA Key Commands documents.
 """
@@ -179,6 +180,11 @@ class KeyCommandsMaker(object):
 			# Each of the remaining columns provides keystrokes for one layout.
 			# There's one less delimiter than there are columns, hence subtracting 1 instead of 2.
 			self._settingsNumLayouts = arg.strip("|").count("|") - 1
+			if self._settingsNumLayouts < 1:
+				raise KeyCommandsError(
+					f"{self._lineNum}, settingsSection command must specify the header row for a table"
+					" summarising the settings"
+				)
 		elif cmd == "setting":
 			self._handleSetting()
 
@@ -212,6 +218,7 @@ class KeyCommandsMaker(object):
 		self._headings.append(m)
 		self._kcLastHeadingLevel = min(self._kcLastHeadingLevel, level - 1)
 
+	RE_SETTING_SINGLE_KEY = re.compile(r"^[^|]+?[:：]\s*(.+?)\s*$")
 	def _handleSetting(self):
 		if not self._settingsHeaderRow:
 			raise KeyCommandsError("%d, setting command cannot be used before settingsSection command" % self._lineNum)
@@ -235,11 +242,12 @@ class KeyCommandsMaker(object):
 		# The next few lines should be table rows for each layout.
 		# Alternatively, if the key is common to all layouts, there will be a single line of text specifying the key after a colon.
 		keys = []
-		for layout in xrange(self._settingsNumLayouts):
+		for layout in range(self._settingsNumLayouts):
 			line = next(self._ug).strip()
 			self._lineNum += 1
-			if ":" in line:
-				keys.append(line.split(":", 1)[1].strip())
+			m = self.RE_SETTING_SINGLE_KEY.match(line)
+			if m:
+				keys.append(m.group(1))
 				break
 			elif not self.t2tRe["table"].match(line):
 				raise KeyCommandsError("%d, setting command: There must be one table row for each keyboard layout" % self._lineNum)
@@ -251,7 +259,7 @@ class KeyCommandsMaker(object):
 		if 1 == len(keys) < self._settingsNumLayouts:
 			# The key has only been specified once, so it is the same in all layouts.
 			key = keys[0]
-			keys[1:] = (key for layout in xrange(self._settingsNumLayouts - 1))
+			keys[1:] = (key for layout in range(self._settingsNumLayouts - 1))
 
 		# There should now be a blank line.
 		line = next(self._ug).strip()

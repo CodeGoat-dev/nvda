@@ -1,16 +1,17 @@
-#characterProcessing.py
-#A part of NonVisual Desktop Access (NVDA)
-#Copyright (C) 2010-2011 NV Access Inc, World Light Information Limited, Hong Kong Blind Union
-#This file is covered by the GNU General Public License.
-#See the file COPYING for more details.
+# A part of NonVisual Desktop Access (NVDA)
+# Copyright (C) 2010-2021 NV Access Limited, World Light Information Limited,
+# Hong Kong Blind Union, Babbage B.V., Julien Cochuyt
+# This file is covered by the GNU General Public License.
+# See the file COPYING for more details.
 
-import time
+from enum import IntEnum
 import os
 import codecs
 import collections
 import re
 from logHandler import log
 import globalVars
+import config
 
 class LocaleDataMap(object):
 	"""Allows access to locale-specific data objects, dynamically loading them if needed on request"""
@@ -59,6 +60,12 @@ class LocaleDataMap(object):
 		except KeyError:
 			pass
 
+	def invalidateAllData(self):
+		"""Invalidate all data within this locale map.
+		This will cause a new data object to be created for every locale that is next requested.
+		"""
+		self._dataMap.clear()
+
 class CharacterDescriptions(object):
 	"""
 	Represents a map of characters to one or more descriptions (examples) for that character.
@@ -71,7 +78,7 @@ class CharacterDescriptions(object):
 		@type locale: string
 		"""
 		self._entries = {}
-		fileName=os.path.join('locale',locale,'characterDescriptions.dic')
+		fileName = os.path.join(globalVars.appDir, 'locale', locale, 'characterDescriptions.dic')
 		if not os.path.isfile(fileName): 
 			raise LookupError(fileName)
 		f = codecs.open(fileName,"r","utf_8_sig",errors="replace")
@@ -116,27 +123,32 @@ def getCharacterDescription(locale,character):
 	if not desc and not locale.startswith('en'):
 		desc=getCharacterDescription('en',character)
 	return desc
- 
+
+
 # Speech symbol levels
-SYMLVL_NONE = 0
-SYMLVL_SOME = 100
-SYMLVL_MOST = 200
-SYMLVL_ALL = 300
-SYMLVL_CHAR = 1000
+class SymbolLevel(IntEnum):
+	NONE = 0
+	SOME = 100
+	MOST = 200
+	ALL = 300
+	CHAR = 1000
+	UNCHANGED = -1
+
+
 SPEECH_SYMBOL_LEVEL_LABELS = {
 	# Translators: The level at which the given symbol will be spoken.
-	SYMLVL_NONE: pgettext("symbolLevel", "none"),
+	SymbolLevel.NONE: pgettext("symbolLevel", "none"),
 	# Translators: The level at which the given symbol will be spoken.
-	SYMLVL_SOME: pgettext("symbolLevel", "some"),
+	SymbolLevel.SOME: pgettext("symbolLevel", "some"),
 	# Translators: The level at which the given symbol will be spoken.
-	SYMLVL_MOST: pgettext("symbolLevel", "most"),
+	SymbolLevel.MOST: pgettext("symbolLevel", "most"),
 	# Translators: The level at which the given symbol will be spoken.
-	SYMLVL_ALL: pgettext("symbolLevel", "all"),
+	SymbolLevel.ALL: pgettext("symbolLevel", "all"),
 	# Translators: The level at which the given symbol will be spoken.
-	SYMLVL_CHAR: pgettext("symbolLevel", "character"),
+	SymbolLevel.CHAR: pgettext("symbolLevel", "character"),
 }
-CONFIGURABLE_SPEECH_SYMBOL_LEVELS = (SYMLVL_NONE, SYMLVL_SOME, SYMLVL_MOST, SYMLVL_ALL)
-SPEECH_SYMBOL_LEVELS = CONFIGURABLE_SPEECH_SYMBOL_LEVELS + (SYMLVL_CHAR,)
+CONFIGURABLE_SPEECH_SYMBOL_LEVELS = (SymbolLevel.NONE, SymbolLevel.SOME, SymbolLevel.MOST, SymbolLevel.ALL)
+SPEECH_SYMBOL_LEVELS = CONFIGURABLE_SPEECH_SYMBOL_LEVELS + (SymbolLevel.CHAR,)
 
 # Speech symbol preserve modes
 SYMPRES_NEVER = 0
@@ -245,21 +257,21 @@ class SpeechSymbols(object):
 		"#": "#",
 		"\\": "\\",
 	}
-	IDENTIFIER_ESCAPES_OUTPUT = {v: k for k, v in IDENTIFIER_ESCAPES_INPUT.iteritems()}
+	IDENTIFIER_ESCAPES_OUTPUT = {v: k for k, v in IDENTIFIER_ESCAPES_INPUT.items()}
 	LEVEL_INPUT = {
-		"none": SYMLVL_NONE,
-		"some": SYMLVL_SOME,
-		"most": SYMLVL_MOST,
-		"all": SYMLVL_ALL,
-		"char": SYMLVL_CHAR,
+		"none": SymbolLevel.NONE,
+		"some": SymbolLevel.SOME,
+		"most": SymbolLevel.MOST,
+		"all": SymbolLevel.ALL,
+		"char": SymbolLevel.CHAR,
 	}
-	LEVEL_OUTPUT = {v:k for k, v in LEVEL_INPUT.iteritems()}
+	LEVEL_OUTPUT = {v:k for k, v in LEVEL_INPUT.items()}
 	PRESERVE_INPUT = {
 		"never": SYMPRES_NEVER,
 		"always": SYMPRES_ALWAYS,
 		"norep": SYMPRES_NOREP,
 	}
-	PRESERVE_OUTPUT = {v: k for k, v in PRESERVE_INPUT.iteritems()}
+	PRESERVE_OUTPUT = {v: k for k, v in PRESERVE_INPUT.items()}
 
 	def _loadSymbol(self, line):
 		line = line.split("\t")
@@ -308,13 +320,13 @@ class SpeechSymbols(object):
 		with codecs.open(fileName, "w", "utf_8_sig", errors="replace") as f:
 			if self.complexSymbols:
 				f.write(u"complexSymbols:\r\n")
-				for identifier, pattern in self.complexSymbols.iteritems():
+				for identifier, pattern in self.complexSymbols.items():
 					f.write(u"%s\t%s\r\n" % (identifier, pattern))
 				f.write(u"\r\n")
 
 			if self.symbols:
 				f.write(u"symbols:\r\n")
-				for symbol in self.symbols.itervalues():
+				for symbol in self.symbols.values():
 					f.write(u"%s\r\n" % self._saveSymbol(symbol))
 
 	def _saveSymbolField(self, output, outputMap=None):
@@ -350,11 +362,26 @@ class SpeechSymbols(object):
 			fields.append("# %s" % symbol.displayName)
 		return u"\t".join(fields)
 
+_noSymbolLocalesCache = set()
 def _getSpeechSymbolsForLocale(locale):
+	if locale in _noSymbolLocalesCache:
+		raise LookupError
 	builtin = SpeechSymbols()
+	if config.conf['speech']['includeCLDR']:
+		# Try to load CLDR data when processing is on.
+		# Load the data before loading other symbols,
+		# in order to allow translators to override them.
+		try:
+			builtin.load(
+				os.path.join(globalVars.appDir, "locale", locale, "cldr.dic"),
+				allowComplexSymbols=False
+			)
+		except IOError:
+			log.debugWarning("No CLDR data for locale %s" % locale)
 	try:
-		builtin.load(os.path.join("locale", locale, "symbols.dic"))
+		builtin.load(os.path.join(globalVars.appDir, "locale", locale, "symbols.dic"))
 	except IOError:
+		_noSymbolLocalesCache.add(locale)
 		raise LookupError("No symbol information for locale %s" % locale)
 	user = SpeechSymbols()
 	try:
@@ -409,7 +436,7 @@ class SpeechSymbolProcessor(object):
 
 		# Add all complex symbols first, as they take priority.
 		for source in sources:
-			for identifier, pattern in source.complexSymbols.iteritems():
+			for identifier, pattern in source.complexSymbols.items():
 				if identifier in symbols:
 					# Already defined.
 					continue
@@ -419,7 +446,7 @@ class SpeechSymbolProcessor(object):
 
 		# Supplement the data for complex symbols and add all simple symbols.
 		for source in sources:
-			for identifier, sourceSymbol in source.symbols.iteritems():
+			for identifier, sourceSymbol in source.symbols.items():
 				try:
 					symbol = symbols[identifier]
 					# We're updating an already existing symbol.
@@ -442,19 +469,27 @@ class SpeechSymbolProcessor(object):
 					symbol.displayName = sourceSymbol.displayName
 
 		# Set defaults for any fields not explicitly set.
-		for symbol in symbols.values():
+		# As the symbols dictionary changes during iteration, wrap this inside a list call.
+		for symbol in list(symbols.values()):
 			if symbol.replacement is None:
 				# Symbols without a replacement specified are useless.
 				log.warning(u"Replacement not defined in locale {locale} for symbol: {symbol}".format(
 					symbol=symbol.identifier, locale=self.locale))
 				del symbols[symbol.identifier]
 				try:
+					if len(symbol.identifier) == 1:
+						characters.remove(symbol.identifier)
+					else:
+						multiChars.remove(symbol.identifier)
+				except ValueError:
+					pass
+				try:
 					complexSymbolsList.remove(symbol)
 				except ValueError:
 					pass
 				continue
 			if symbol.level is None:
-				symbol.level = SYMLVL_ALL
+				symbol.level = SymbolLevel.ALL
 			if symbol.preserve is None:
 				symbol.preserve = SYMPRES_NEVER
 			if symbol.displayName is None:
@@ -480,7 +515,7 @@ class SpeechSymbolProcessor(object):
 		# Simple symbols.
 		# These are all handled in one named group.
 		# Because the symbols are just text, we know which symbol matched just by looking at the matched text.
-		patterns.append(ur"(?P<simple>{multiChars}|{singleChars})".format(
+		patterns.append(r"(?P<simple>{multiChars}|{singleChars})".format(
 			multiChars="|".join(re.escape(identifier) for identifier in multiChars),
 			singleChars=characters
 		))
@@ -490,6 +525,35 @@ class SpeechSymbolProcessor(object):
 		except re.error as e:
 			log.error("Invalid complex symbol regular expression in locale %s: %s" % (locale, e))
 			raise LookupError
+
+	def _replaceGroups(self, m: re.Match, string: str) -> str:
+		"""Replace matching group references (\\1, \\2, ...) with the corresponding matched groups.
+		Also replace \\\\ with \\ and reject other escapes, for escaping coherency.
+		@param m: The currently-matched group
+		@param string: The match replacement string which may contain group references
+		"""
+		result = ''
+
+		in_escape = False
+		for char in string:
+			if not in_escape:
+				if char == '\\':
+					in_escape = True
+				else:
+					result += char
+			else:
+				if char == '\\':
+					result += '\\'
+				elif char >= '0' and char <= '9':
+					result += m.group(m.lastindex + ord(char) - ord('0'))
+				else:
+					log.error("Invalid reference \\%string" % char)
+					raise LookupError
+				in_escape = False
+		if in_escape:
+			log.error("Unterminated backslash")
+			raise LookupError
+		return result
 
 	def _regexpRepl(self, m):
 		group = m.lastgroup
@@ -512,16 +576,19 @@ class SpeechSymbolProcessor(object):
 			if group == "simple":
 				# Simple symbol.
 				symbol = self.computedSymbols[text]
+				replacement = symbol.replacement
 			else:
 				# Complex symbol.
 				index = int(group[1:])
 				symbol = self._computedComplexSymbolsList[index]
+				replacement = self._replaceGroups(m, symbol.replacement)
+
 			if symbol.preserve == SYMPRES_ALWAYS or (symbol.preserve == SYMPRES_NOREP and self._level < symbol.level):
 				suffix = text
 			else:
 				suffix = " "
-			if self._level >= symbol.level and symbol.replacement:
-				return u" {repl}{suffix}".format(repl=symbol.replacement, suffix=suffix)
+			if self._level >= symbol.level and replacement:
+				return u" {repl}{suffix}".format(repl=replacement, suffix=suffix)
 			else:
 				return suffix
 
@@ -589,7 +656,7 @@ class SpeechSymbolProcessor(object):
 	def isBuiltin(self, symbolIdentifier):
 		"""Determine whether a symbol is built in.
 		@param symbolIdentifier: The identifier of the symbol in question.
-		@type symbolIdentifier: unicode
+		@type symbolIdentifier: str
 		@return: C{True} if the symbol is built in,
 			C{False} if it was added by the user.
 		@rtype: bool
@@ -598,13 +665,12 @@ class SpeechSymbolProcessor(object):
 
 _localeSpeechSymbolProcessors = LocaleDataMap(SpeechSymbolProcessor)
 
-def processSpeechSymbols(locale, text, level):
+
+def processSpeechSymbols(locale: str, text: str, level: SymbolLevel):
 	"""Process some text, converting symbols according to desired pronunciation.
 	@param locale: The locale of the text.
-	@type locale: str
 	@param text: The text to process.
-	@type text: str
-	@param level: The symbol level to use; one of the SYMLVL_* constants.
+	@param level: The symbol level to use.
 	"""
 	try:
 		ss = _localeSpeechSymbolProcessors.fetchLocaleData(locale)
@@ -632,3 +698,19 @@ def processSpeechSymbol(locale, symbol):
 	except KeyError:
 		pass
 	return symbol
+
+def clearSpeechSymbols():
+	"""Clears the symbol data cached by the locale speech symbol processors.
+	This will cause new data to be fetched for the next request to pronounce symbols.
+	"""
+	SpeechSymbolProcessor.localeSymbols.invalidateAllData()
+	_localeSpeechSymbolProcessors.invalidateAllData()
+
+def handlePostConfigProfileSwitch(prevConf=None):
+	if not prevConf:
+		return
+	if prevConf["speech"]["includeCLDR"] is not config.conf["speech"]["includeCLDR"]:
+		# Either included or excluded CLDR data, so clear the cache.
+		clearSpeechSymbols()
+
+config.post_configProfileSwitch.register(handlePostConfigProfileSwitch)

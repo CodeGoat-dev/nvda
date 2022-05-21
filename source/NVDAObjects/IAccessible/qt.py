@@ -1,6 +1,6 @@
 #NVDAObjects/IAccessible/qt.py
 #A part of NonVisual Desktop Access (NVDA)
-#Copyright (C) 2006-2009 NVDA Contributors <http://www.nvda-project.org/>
+#Copyright (C) 2006-2019 NV Access Limited, Babbage B.V.
 #This file is covered by the GNU General Public License.
 #See the file COPYING for more details.
 
@@ -9,6 +9,27 @@ import controlTypes
 from NVDAObjects.IAccessible import IAccessible
 import eventHandler
 from scriptHandler import isScriptWaiting
+
+def _getActiveChild(obj):
+	# QT doesn't do accFocus properly, so find the active child ourselves.
+	child = obj.firstChild
+	for i in range(obj.childCount):
+		states = child.states
+		if controlTypes.State.FOCUSED in states or controlTypes.State.SELECTED in states:
+			return child
+		oldChild = child
+		child = child.next
+		# 9202: In Virtualbox 5.2 and above, accNavigate is severely broken,
+		# returning the current object when calling next, causing an endless loop.
+		if oldChild == child:
+			break
+	else:
+		return None				
+	for child in obj.children:
+		states = child.states
+		if controlTypes.State.FOCUSED in states or controlTypes.State.SELECTED in states:
+			return child
+	return None
 
 class Client(IAccessible):
 
@@ -23,7 +44,7 @@ class Client(IAccessible):
 			return widget
 
 		try:
-			if wnext.firstChild.role == controlTypes.ROLE_SCROLLBAR:
+			if wnext.firstChild.role == controlTypes.Role.SCROLLBAR:
 				# There is only one child plus a scrollbar, so this is probably a widget container.
 				return widget
 		except AttributeError:
@@ -32,45 +53,24 @@ class Client(IAccessible):
 		# This is not a widget container.
 		return None
 
-	def event_gainFocus(self):
-		if eventHandler.isPendingEvents("gainFocus"):
-			return
-
-		widget = self._containedWidget
-		if widget:
-			# This is a widget container.
-			# Redirect the focus to the contained widget, since QT doesn't do it properly.
-			self.event_focusEntered()
-			eventHandler.executeEvent("gainFocus", widget)
-			return
-
-		return super(Client, self).event_gainFocus()
+	def _get_focusRedirect(self):
+		return self._containedWidget
 
 class Container(IAccessible):
 
 	def _get_activeChild(self):
-		# QT doesn't do accFocus properly, so find the active child ourselves.
-		child = self.firstChild
-		while child:
-			states = child.states
-			if controlTypes.STATE_FOCUSED in states or controlTypes.STATE_SELECTED in states:
-				return child
-			child = child.next
-		return None
+		return _getActiveChild(self)
 
-	def event_gainFocus(self):
-		if eventHandler.isPendingEvents("gainFocus"):
-			return
+	def _get_shouldAllowIAccessibleFocusEvent(self):
+		# QT doesn't fire focus on the active child as it should, so we will bounce the focus to it.
+		# However, as the container does not have the focused state in QT5, we must still ensure we can get the event if we are going to bounce it
+		res=super(Container,self).shouldAllowIAccessibleFocusEvent
+		if not res:
+			res=bool(self.activeChild)
+		return res
 
-		child = self.activeChild
-		if child:
-			# QT doesn't fire focus on the active child as it should, so redirect the focus.
-			self.event_focusEntered()
-			eventHandler.executeEvent("gainFocus", child)
-			return
-
-		return super(Container, self).event_gainFocus()
-
+	def _get_focusRedirect(self):
+		return self.activeChild
 
 class TableRow(Container):
 
@@ -78,15 +78,7 @@ class TableRow(Container):
 	description=None
 
 	def _get_activeChild(self):
-		# QT doesn't do accFocus properly, so find the active child ourselves.
-		child = self.firstChild
-		while child:
-			states = child.states
-			if controlTypes.STATE_FOCUSED in states:
-				return child
-			child = child.next
-		return None
-
+		return _getActiveChild(self)
 
 class TableCell(IAccessible):
 
@@ -96,14 +88,14 @@ class TableCell(IAccessible):
 		gesture.send()
 		if not isScriptWaiting():
 			next=self.next
-			if next and controlTypes.STATE_FOCUSED in next.states:
+			if next and controlTypes.State.FOCUSED in next.states:
 				eventHandler.executeEvent("gainFocus", next)
 
 	def script_previousColumn(self,gesture):
 		gesture.send()
 		if not isScriptWaiting():
 			previous=self.previous
-			if previous and controlTypes.STATE_FOCUSED in previous.states:
+			if previous and controlTypes.State.FOCUSED in previous.states:
 				eventHandler.executeEvent("gainFocus", previous)
 
 	__gestures = {
@@ -128,7 +120,7 @@ class Menu(IAccessible):
 class LayeredPane(IAccessible):
 	# QT < 4.6 uses ROLE_SYSTEM_IPADDRESS for layered pane.
 	# See QT task 258413.
-	role = controlTypes.ROLE_LAYEREDPANE
+	role = controlTypes.Role.LAYEREDPANE
 
 class Application(IAccessible):
 	# QT sets the path of the application in the description, which is irrelevant to the user.
@@ -138,5 +130,5 @@ class Application(IAccessible):
 		states = super(Application, self)._get_states()
 		# The application should not have the focused state.
 		# Otherwise, checks for the focused state will always hit the application and assume the focus is valid.
-		states.discard(controlTypes.STATE_FOCUSED)
+		states.discard(controlTypes.State.FOCUSED)
 		return states

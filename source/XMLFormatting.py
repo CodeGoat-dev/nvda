@@ -1,25 +1,30 @@
+# A part of NonVisual Desktop Access (NVDA)
+# Copyright (C) 2008-2021 NV Access Limited, Babbage B.V.
+# This file is covered by the GNU General Public License.
+# See the file COPYING for more details.
+
+import typing
 from xml.parsers import expat
 import textInfos
+import textUtils
 from logHandler import log
+from textUtils import WCHAR_ENCODING, isLowSurrogate
+
+CommandsT = typing.Union[textInfos.FieldCommand, typing.Optional[str]]
+CommandListT = typing.List[CommandsT]
+
 
 class XMLTextParser(object): 
-
-	def __init__(self):
-		self.parser=expat.ParserCreate('utf-8')
-		self.parser.StartElementHandler=self._startElementHandler
-		self.parser.EndElementHandler=self._EndElementHandler
-		self.parser.CharacterDataHandler=self._CharacterDataHandler
-		self._commandList=[]
 
 	def _startElementHandler(self,tagName,attrs):
 		if tagName=='unich':
 			data=attrs.get('value',None)
 			if data is not None:
 				try:
-					data=unichr(int(data))
+					data=chr(int(data))
 				except ValueError:
-					data=u'\ufffd'
-				self._CharacterDataHandler(data)
+					data = textUtils.REPLACEMENT_CHAR
+				self._CharacterDataHandler(data, processBufferedSurrogates=isLowSurrogate(data))
 			return
 		elif tagName=='control':
 			newAttrs=textInfos.ControlField(attrs)
@@ -48,16 +53,26 @@ class XMLTextParser(object):
 		else:
 			raise ValueError("unknown tag name: %s"%tagName)
 
-	def _CharacterDataHandler(self,data):
+	def _CharacterDataHandler(self, data: typing.Optional[str], processBufferedSurrogates=False):
 		cmdList=self._commandList
-		if cmdList and isinstance(cmdList[-1],basestring):
-			cmdList[-1]+=data
+		if not isinstance(data, str):
+			dataStr = repr(data)
+			log.warning(f"unknown type for data: {dataStr}")
+		if cmdList and isinstance(cmdList[-1],str):
+			cmdList[-1] += data
+			if processBufferedSurrogates:
+				cmdList[-1] = cmdList[-1].encode(WCHAR_ENCODING, errors="surrogatepass").decode(WCHAR_ENCODING)
 		else:
 			cmdList.append(data)
 
-	def parse(self,XMLText):
+	def parse(self, XMLText) -> CommandListT:
+		parser = expat.ParserCreate('utf-8')
+		parser.StartElementHandler = self._startElementHandler
+		parser.EndElementHandler = self._EndElementHandler
+		parser.CharacterDataHandler = self._CharacterDataHandler
+		self._commandList: XMLTextParser.CommandListT = []
 		try:
-			self.parser.Parse(XMLText.encode('utf-8'))
-		except:
-			log.error("XML: %s"%XMLText,exc_info=True)
+			parser.Parse(XMLText)
+		except Exception:
+			log.error("XML: %s" % XMLText, exc_info=True)
 		return self._commandList

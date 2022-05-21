@@ -2,7 +2,7 @@
 #A part of NonVisual Desktop Access (NVDA)
 #This file is covered by the GNU General Public License.
 #See the file COPYING for more details.
-#Copyright (C) 2009-2011 James Teh <jamie@jantrid.net>, Michael Curran <mick@kulgan.net>
+#Copyright (C) 2009-2016 NV Access Limited, Joseph Lee
 
 import speech
 import api
@@ -13,20 +13,19 @@ from NVDAObjects.behaviors import Dialog
 import appModuleHandler
 import eventHandler
 import UIAHandler
-if UIAHandler.isUIAAvailable:
-	from NVDAObjects.UIA import UIA
+from NVDAObjects.UIA import UIA
 
 """App module for the Windows Logon screen
 """
 
 class LogonDialog(Dialog):
 
-	role = controlTypes.ROLE_DIALOG
+	role = controlTypes.Role.DIALOG
 	isPresentableFocusAncestor = True
 
 	def event_gainFocus(self):
 		child = self.firstChild
-		if child and controlTypes.STATE_FOCUSED in child.states and not eventHandler.isPendingEvents("gainFocus"):
+		if child and controlTypes.State.FOCUSED in child.states and not eventHandler.isPendingEvents("gainFocus"):
 			# UIA reports that focus is on the top level pane, even when it's actually on the frame below.
 			# This causes us to incorrectly use UIA for the top level pane, which causes this pane to be spoken again when the focus moves.
 			# Therefore, bounce the focus to the correct object.
@@ -35,15 +34,17 @@ class LogonDialog(Dialog):
 
 		return super(LogonDialog, self).event_gainFocus()
 
-if UIAHandler.isUIAAvailable:
-	class Win8PasswordField(UIA):
 
-		#This UIA object has no invoke pattern, at least set focus.
-		def doAction(self,index=None):
-			if not index:
-				self.setFocus()
-			else:
-				super(Win8PasswordField,self).doAction(index)
+class Win8PasswordField(UIA):
+
+	# This UIA object has no invoke pattern, at least set focus.
+	# #6024: Affects both Windows 8.x and 10.
+	def doAction(self, index=None):
+		if not index:
+			self.setFocus()
+		else:
+			super().doAction(index)
+
 
 class XPPasswordField(IAccessible):
 
@@ -66,7 +67,7 @@ class XPPasswordField(IAccessible):
 		oldName = self.name
 		gesture.send()
 		self.invalidateCache()
-		if oldName == self.name or controlTypes.STATE_FOCUSED not in self.states:
+		if oldName == self.name or controlTypes.State.FOCUSED not in self.states:
 			return
 		self.event_gainFocus()
 
@@ -81,23 +82,26 @@ class AppModule(appModuleHandler.AppModule):
 	def chooseNVDAObjectOverlayClasses(self, obj, clsList):
 		windowClass = obj.windowClassName
 
-		if UIAHandler.isUIAAvailable:
-			if isinstance(obj,UIA) and obj.UIAElement.cachedClassName=="TouchEditInner" and obj.role==controlTypes.ROLE_EDITABLETEXT:
+		if UIAHandler.handler:
+			if isinstance(obj,UIA) and obj.UIAElement.cachedClassName in ("TouchEditInner", "PasswordBox") and obj.role==controlTypes.Role.EDITABLETEXT:
 				clsList.insert(0,Win8PasswordField)
-		if windowClass == "AUTHUI.DLL: LogonUI Logon Window" and obj.parent and obj.parent.parent and not obj.parent.parent.parent:
+		# #6010: Allow Windows 10 version to be recognized as well.
+		if ((windowClass == "AUTHUI.DLL: LogonUI Logon Window" and obj.parent and obj.parent.parent and not obj.parent.parent.parent)
+		or (windowClass == "LogonUI Logon Window" and obj.UIAIsWindowElement)):
 			clsList.insert(0, LogonDialog)
 			return
 
 		if windowClass == "Edit" and not obj.name:
 			parent = obj.parent
-			if parent and parent.role == controlTypes.ROLE_WINDOW:
+			if parent and parent.role == controlTypes.Role.WINDOW:
 				clsList.insert(0, XPPasswordField)
 				return
 
 	def event_gainFocus(self,obj,nextHandler):
-		if obj.windowClassName=="DirectUIHWND" and obj.role==controlTypes.ROLE_BUTTON and not obj.next:
+		# #6010: Windows 10 version uses a different window class name.
+		if obj.windowClassName in ("DirectUIHWND", "LogonUI Logon Window") and obj.role==controlTypes.Role.BUTTON and not obj.next:
 			prev=obj.previous
-			if prev and prev.role==controlTypes.ROLE_STATICTEXT:
+			if prev and prev.role in (controlTypes.Role.STATICTEXT, controlTypes.Role.PANE):
 				# This is for a popup message in the logon dialog.
 				# Present the dialog again so the message will be reported.
 				speech.speakObjectProperties(api.getForegroundObject(),name=True,role=True,description=True)

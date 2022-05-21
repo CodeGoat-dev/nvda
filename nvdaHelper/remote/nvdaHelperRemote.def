@@ -8,6 +8,7 @@ EXPORTS
 	unregisterWinEventHook
 	registerWindowsHook
 	unregisterWindowsHook
+	execInThread
 	logMessage
 	NVDALogCrtReportHook
 	nvdaInProcUtils_winword_expandToLine
@@ -18,3 +19,5 @@ EXPORTS
 	nvdaController_speakText
 	nvdaController_cancelSpeech
 	nvdaController_brailleMessage
+	nvdaControllerInternal_reportLiveRegion
+	nvdaControllerInternal_openConfigDirectory

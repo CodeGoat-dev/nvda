@@ -2,6 +2,7 @@ import api
 import tones
 import controlTypes
 import textInfos
+import locationHelper
 import speech
 
 class ScreenExplorer(object):
@@ -18,7 +19,7 @@ class ScreenExplorer(object):
 		while obj  and obj.beTransparentToMouse:
 			prevObj=obj
 			obj=obj.parent
-		if not obj or (obj.presentationType!=obj.presType_content and obj.role!=controlTypes.ROLE_PARAGRAPH):
+		if not obj or (obj.presentationType!=obj.presType_content and obj.role!=controlTypes.Role.PARAGRAPH):
 			obj=prevObj
 		if not obj:
 			return
@@ -42,7 +43,7 @@ class ScreenExplorer(object):
 					hasNewObj=False 
 		if not pos:
 			try:
-				pos=obj.makeTextInfo(textInfos.Point(x,y))
+				pos=obj.makeTextInfo(locationHelper.Point(x,y))
 			except (NotImplementedError,LookupError):
 				pass
 			if pos: pos.expand(unit)
@@ -57,4 +58,4 @@ class ScreenExplorer(object):
 				self._pos=pos
 				if not speechCanceled:
 					speech.cancelSpeech()
-				speech.speakTextInfo(pos,reason=controlTypes.REASON_CARET)
+				speech.speakTextInfo(pos, reason=controlTypes.OutputReason.CARET)

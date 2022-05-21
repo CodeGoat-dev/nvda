@@ -18,7 +18,7 @@ http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 #include <windows.h>
 #include <ole2.h>
 #include <rpc.h>
-#include "displayModelRemote.h"
+#include <remote/displayModelRemote.h>
 #include "gdiHooks.h"
 #include <common/log.h>
 
@@ -29,8 +29,8 @@ BOOL CALLBACK EnumChildWindowsProc(HWND hwnd, LPARAM lParam) {
 	return TRUE;
 }
 
-error_status_t displayModelRemote_getWindowTextInRect(handle_t bindingHandle, const long windowHandle, const boolean includeDescendantWindows, const int left, const int top, const int right, const int bottom, const int minHorizontalWhitespace, const int minVerticalWhitespace, const boolean stripOuterWhitespace, BSTR* textBuf, BSTR* characterLocationsBuf) {
-	HWND hwnd=(HWND)windowHandle;
+error_status_t displayModelRemote_getWindowTextInRect(handle_t bindingHandle, const unsigned long windowHandle, const boolean includeDescendantWindows, const int left, const int top, const int right, const int bottom, const int minHorizontalWhitespace, const int minVerticalWhitespace, const boolean stripOuterWhitespace, BSTR* textBuf, BSTR* characterLocationsBuf) {
+	HWND hwnd=(HWND)UlongToHandle(windowHandle);
 	deque<HWND> windowDeque;
 	bool hasDescendantWindows=false;
 	if(includeDescendantWindows) {
@@ -67,7 +67,7 @@ error_status_t displayModelRemote_getWindowTextInRect(handle_t bindingHandle, co
 		deque<RECT> characterLocations;
 		//if this is a temporary model, now correctly set its windowHandle before rendering the text.
 		//The windowHandle was not set at construction time as we did not want the inserted chunks to inherit this handle but instead keep their own.
-		if(hasDescendantWindows) tempModel->hwnd=(HWND)windowHandle;
+		if(hasDescendantWindows) tempModel->hwnd=(HWND)UlongToHandle(windowHandle);
 		tempModel->renderText(textRect,minHorizontalWhitespace,minVerticalWhitespace,stripOuterWhitespace!=0,text,characterLocations);
 		if(hasDescendantWindows) {
 			tempModel->requestDelete();
@@ -78,6 +78,9 @@ error_status_t displayModelRemote_getWindowTextInRect(handle_t bindingHandle, co
 		size_t cpBufSize=characterLocations.size()*4;
 		// Hackishly use a BSTR to contain points.
 		wchar_t* cpTempBuf=(wchar_t*)malloc(cpBufSize*sizeof(wchar_t));
+		if (!cpTempBuf) {
+			return -1;
+		}
 		wchar_t* cpTempBufIt=cpTempBuf;
 		for(deque<RECT>::const_iterator cpIt=characterLocations.begin();cpIt!=characterLocations.end();++cpIt) {
 			*(cpTempBufIt++)=(wchar_t)cpIt->left;
@@ -91,8 +94,8 @@ error_status_t displayModelRemote_getWindowTextInRect(handle_t bindingHandle, co
 	return 0;
 }
 
-error_status_t displayModelRemote_getFocusRect(handle_t bindingHandle, const long windowHandle, long* left, long* top, long* right, long* bottom) {
-	HWND hwnd=(HWND)windowHandle;
+error_status_t displayModelRemote_getFocusRect(handle_t bindingHandle, const unsigned long windowHandle, long* left, long* top, long* right, long* bottom) {
+	HWND hwnd=(HWND)UlongToHandle(windowHandle);
 	displayModelsByWindow.acquire();
 	displayModelsMap_t<HWND>::iterator i=displayModelsByWindow.find(hwnd);
 	RECT focusRect;
@@ -127,7 +130,7 @@ error_status_t displayModelRemote_getCaretRect(handle_t bindingHandle, const lon
 	return 0;
 }
 
-error_status_t displayModelRemote_requestTextChangeNotificationsForWindow(handle_t bindingHandle, const long windowHandle, const BOOL enable) {
-	if(enable) windowsForTextChangeNotifications[(HWND)windowHandle]+=1; else windowsForTextChangeNotifications[(HWND)windowHandle]-=1;
+error_status_t displayModelRemote_requestTextChangeNotificationsForWindow(handle_t bindingHandle, const unsigned long windowHandle, const BOOL enable) {
+	if(enable) windowsForTextChangeNotifications[(HWND)UlongToHandle(windowHandle)]+=1; else windowsForTextChangeNotifications[(HWND)UlongToHandle(windowHandle)]-=1;
 	return 0;
 }

@@ -1,28 +1,26 @@
-# -*- coding: UTF-8 -*-
-#NVDAObjects/IAccessible/sysListView32.py
-#A part of NonVisual Desktop Access (NVDA)
-#Copyright (C) 2006-2012 NV Access Limited, Peter Vágner
-#This file is covered by the GNU General Public License.
-#See the file COPYING for more details.
+# A part of NonVisual Desktop Access (NVDA)
+# Copyright (C) 2006-2020 NV Access Limited, Peter Vágner, Leonard de Ruijter
+# This file is covered by the GNU General Public License.
+# See the file COPYING for more details.
 
 import time
 from ctypes import *
+import ctypes
 from ctypes.wintypes import *
 from comtypes import BSTR
-import oleacc
 import NVDAHelper
 import watchdog
 import controlTypes
-import speech
 import api
 import eventHandler
 import winKernel
-import winUser
 from . import IAccessible, List
 from ..window import Window
-import watchdog
 from NVDAObjects.behaviors import RowWithoutCellObjects, RowWithFakeNavigation
 import config
+from locationHelper import RectLTRB
+from logHandler import log
+from typing import Optional
 
 #Window messages
 LVM_FIRST=0x1000
@@ -53,6 +51,15 @@ LVIF_INDENT=0x10
 LVIF_GROUPID=0x100
 LVIF_COLUMNS=0x200
 
+#GETSUBITEMRECT flags
+# Returns the bounding rectangle of the entire item, including the icon and label
+LVIR_BOUNDS = 0
+# Returns the bounding rectangle of the icon or small icon.
+LVIR_ICON = 1
+# Returns the bounding rectangle of the entire item, including the icon and label.
+# This is identical to LVIR_BOUNDS.
+LVIR_LABEL = 2
+
 #Item states
 LVIS_FOCUSED=0x01
 LVIS_SELECTED=0x02
@@ -70,7 +77,10 @@ LVCF_SUBITEM=8
 LVCF_IMAGE=16
 LVCF_ORDER=32
 
-CBEMAXSTRLEN=260
+# The size of a buffer to hold text for listview items and columns etc 
+# #7828: Windows headers define this as 260 characters. However this is not long enough for modern Twitter clients that need at least 280 characters.
+# Therefore, round it up to the nearest power of 2
+CBEMAXSTRLEN=512
 
 # listview header window messages
 HDM_FIRST=0x1200
@@ -144,9 +154,23 @@ class LVCOLUMN64(Structure):
 		('cxIdeal',c_int),
 	]
 
+
 class AutoFreeBSTR(BSTR):
-	"""A BSTR that *always* frees itself on deletion.""" 
+	"""A BSTR that *always* frees itself on deletion.
+	A BSTR (Basic string or binary string) is a string data type that is used by COM,
+	Automation, and Interop functions.
+
+	AutoFreeBSTR is useful where another library allocates (SysAllocString/SysAllocStringLen)
+	and you want to ensure that it will be deallocated (SysFreeString).
+	@note The conditions requiring the use of this class are not clear.
+		The current usage is considered legacy.
+	@note The BSTR (base class) from comtypes will free the string when it
+		is from an outparam (indicating that memory was allocated in the library).
+	@warning Don't use this unless you are certain about taking ownership of the memory.
+	@warning Deprecated, may be removed in future versions.
+	"""
 	_needsfree=True
+
 
 class List(List):
 
@@ -202,18 +226,72 @@ class List(List):
 			return 1
 		return count
 
-	def _get__columnOrderArray(self):
-		coa=(c_int *self.columnCount)()
+	def _getColumnOrderArrayRawInProc(self, columnCount: int) -> Optional[ctypes.Array]:
+		"""Retrieves a list of column indexes for a given list control.
+		See `_getColumnOrderArrayRaw` for more comments.
+		Note that this method operates in process and cannot be used in situations where NVDA cannot inject
+		i.e when running as a Windows Store application or when no focus event was received on startup.
+		"""
+		columnOrderArray = (ctypes.c_int * columnCount)()
+		res = watchdog.cancellableExecute(
+			NVDAHelper.localLib.nvdaInProcUtils_sysListView32_getColumnOrderArray,
+			self.appModule.helperLocalBindingHandle,
+			self.windowHandle,
+			columnCount,
+			columnOrderArray
+		)
+		if res:
+			return None
+		return columnOrderArray
+
+	def _getColumnOrderArrayRawOutProc(self, columnCount: int) -> Optional[ctypes.Array]:
+		"""Retrieves a list of column indexes for a given list control.
+		See `_getColumnOrderArrayRaw` for more comments.
+		Note that this method operates out of process and has to reserve memory inside a given application.
+		As a consequence it may fail when reserved memory is above the range available
+		for 32-bit processes.
+		Use only when in process injection is not possible.
+		"""
+		coa = (ctypes.c_int * columnCount)()
 		processHandle=self.processHandle
 		internalCoa=winKernel.virtualAllocEx(processHandle,None,sizeof(coa),winKernel.MEM_COMMIT,winKernel.PAGE_READWRITE)
 		try:
 			winKernel.writeProcessMemory(processHandle,internalCoa,byref(coa),sizeof(coa),None)
-			res = watchdog.cancellableSendMessage(self.windowHandle,LVM_GETCOLUMNORDERARRAY, self.columnCount, internalCoa)
+			# The meaning of the return value depends on the message sent, for LVM_GETCOLUMNORDERARRAY,
+			# it returns nonzero if successful, or 0 otherwise.
+			# https://docs.microsoft.com/en-us/windows/win32/controls/lvm-getcolumnorderarray#return-value
+			res = watchdog.cancellableSendMessage(
+				self.windowHandle,
+				LVM_GETCOLUMNORDERARRAY,
+				columnCount,
+				internalCoa
+			)
 			if res:
 				winKernel.readProcessMemory(processHandle,internalCoa,byref(coa),sizeof(coa),None)
+			else:
+				coa = None
+				log.debugWarning(
+					f"LVM_GETCOLUMNORDERARRAY failed for list. "
+					f"Windows Error: {ctypes.GetLastError()}, Handle: {self.windowHandle}"
+				)
 		finally:
 			winKernel.virtualFreeEx(processHandle,internalCoa,0,winKernel.MEM_RELEASE)
 		return coa
+
+	def _getColumnOrderArrayRaw(self, columnCount: int) -> Optional[ctypes.Array]:
+		"""Retrieves an array of column indexes for a given list.
+		The indexes are placed in order in which columns are displayed on screen from left to right.
+		Note that when columns are reordered the indexes remain the same - only their order differs.
+		"""
+		if self.appModule.helperLocalBindingHandle is None:
+			return self._getColumnOrderArrayRawOutProc(columnCount)
+		return self._getColumnOrderArrayRawInProc(columnCount)
+
+	_columnOrderArray: Optional[ctypes.Array]
+
+	def _get__columnOrderArray(self) -> Optional[ctypes.Array]:
+		return self._getColumnOrderArrayRaw(self.columnCount)
+
 
 class GroupingItem(Window):
 
@@ -241,7 +319,7 @@ class GroupingItem(Window):
 	def _get_name(self):
 		return self.groupInfo['header']
 
-	role = controlTypes.ROLE_GROUPING
+	role = controlTypes.Role.GROUPING
 
 	def _get_value(self):
 		return self.groupInfo['footer']
@@ -249,14 +327,17 @@ class GroupingItem(Window):
 	def _get_states(self):
 		states=set()
 		if self.groupInfo['state']&1:
-			states.add(controlTypes.STATE_COLLAPSED)
+			states.add(controlTypes.State.COLLAPSED)
 		else:
-			states.add(controlTypes.STATE_EXPANDED)
+			states.add(controlTypes.State.EXPANDED)
 		return states
 
 	def script_collapseOrExpand(self,gesture):
 		gesture.send()
 		eventHandler.queueEvent("stateChange",self)
+
+CHAR_LTR_MARK = u'\u200E'
+CHAR_RTL_MARK = u'\u200F'
 
 class ListItemWithoutColumnSupport(IAccessible):
 
@@ -276,10 +357,8 @@ class ListItemWithoutColumnSupport(IAccessible):
 			value=self.displayText
 		if not value:
 			return None
-		#Some list view items in Vista can contain annoying left-to-right and right-to-left indicator characters which really should not be there.
-		value=value.replace(u'\u200E','')
-		value=value.replace(u'\u200F','')
-		return value
+		#Some list view items in Windows Vista and later can contain annoying left-to-right and right-to-left indicator characters which really should not be there.
+		return value.replace(CHAR_LTR_MARK,'').replace(CHAR_RTL_MARK,'')
 
 	def _get_positionInfo(self):
 		index=self.IAccessibleChildID
@@ -290,26 +369,122 @@ class ListItemWithoutColumnSupport(IAccessible):
 		if self.hasFocus:
 			super(ListItemWithoutColumnSupport,self).event_stateChange()
 
-class ListItem(RowWithFakeNavigation, RowWithoutCellObjects, ListItemWithoutColumnSupport):
 
-	def _getColumnLocationRaw(self,index):
+class ListItem(RowWithFakeNavigation, RowWithoutCellObjects, ListItemWithoutColumnSupport):
+	parent: List
+
+	def _getColumnLocationRawInProc(self, index: int) -> ctypes.wintypes.RECT:
+		"""Retrieves rectangle containing coordinates for a given column.
+		Note that this method operates in process and cannot be used in situations where NVDA cannot inject
+		i.e when running as a Windows Store application or when no focus event was received on startup.
+		"""
+		item = self.IAccessibleChildID - 1
+		subItem = index
+		rect = ctypes.wintypes.RECT()
+		if watchdog.cancellableExecute(
+			NVDAHelper.localLib.nvdaInProcUtils_sysListView32_getColumnLocation,
+			self.appModule.helperLocalBindingHandle,
+			self.windowHandle,
+			item,
+			subItem,
+			ctypes.byref(rect)
+		) != 0:
+			return None
+		return rect
+
+	def _getColumnLocationRawOutProc(self, index: int) -> ctypes.wintypes.RECT:
+		"""Retrieves rectangle containing coordinates for a given column.
+		Note that this method operates out of process and has to reserve memory inside a given application.
+		As a consequence it may fail when reserved memory is above the range available
+		for 32-bit processes.
+		Use only when in process injection is not possible.
+		"""
 		processHandle=self.processHandle
-		localRect=RECT(left=2,top=index)
+		# LVM_GETSUBITEMRECT requires a pointer to a RECT structure that will receive the subitem bounding rectangle information.
+		localRect=RECT(
+			# Returns the bounding rectangle of the entire item, including the icon and label.
+			left=LVIR_LABEL,
+			# According to Microsoft, top should be the one-based index of the subitem.
+			# However, indexes coming from LVM_GETCOLUMNORDERARRAY are zero based.
+			top=index
+		)
 		internalRect=winKernel.virtualAllocEx(processHandle,None,sizeof(localRect),winKernel.MEM_COMMIT,winKernel.PAGE_READWRITE)
 		try:
 			winKernel.writeProcessMemory(processHandle,internalRect,byref(localRect),sizeof(localRect),None)
-			watchdog.cancellableSendMessage(self.windowHandle,LVM_GETSUBITEMRECT, (self.IAccessibleChildID-1), internalRect)
-			winKernel.readProcessMemory(processHandle,internalRect,byref(localRect),sizeof(localRect),None)
+			res = watchdog.cancellableSendMessage(
+				self.windowHandle,
+				LVM_GETSUBITEMRECT,
+				self.IAccessibleChildID - 1,
+				internalRect
+			)
+			if res:
+				winKernel.readProcessMemory(
+					processHandle,
+					internalRect,
+					ctypes.byref(localRect),
+					ctypes.sizeof(localRect),
+					None
+				)
 		finally:
 			winKernel.virtualFreeEx(processHandle,internalRect,0,winKernel.MEM_RELEASE)
-		windll.user32.ClientToScreen(self.windowHandle,byref(localRect))
-		windll.user32.ClientToScreen(self.windowHandle,byref(localRect,8))
-		return (localRect.left,localRect.top,localRect.right-localRect.left,localRect.bottom-localRect.top)
+		if res == 0:
+			log.debugWarning(f"LVM_GETSUBITEMRECT failed for index {index} in list")
+			return None
+		return localRect
 
-	def _getColumnLocation(self,column):
+	def _getColumnLocationRaw(self, index: int) -> Optional[RectLTRB]:
+		if not self.appModule.helperLocalBindingHandle:
+			rect = self._getColumnLocationRawOutProc(index)
+		else:
+			rect = self._getColumnLocationRawInProc(index)
+		if rect is None:
+			return None
+		# #8268: this might be a malformed rectangle
+		# (i.e. with a left coordinate that is greater than the right coordinate).
+		# This happens in Becky! Internet Mail,
+		# as well in applications that expose zero width columns.
+		left = rect.left
+		top = rect.top
+		right = rect.right
+		bottom = rect.bottom
+		if left > right:
+			left = right
+		if top > bottom:
+			top = bottom
+		return RectLTRB(left, top, right, bottom).toScreen(self.windowHandle).toLTWH()
+
+	def _getColumnLocation(self, column: int) -> Optional[RectLTRB]:
+		if self.parent._columnOrderArray is None:
+			log.debugWarning("Cannot fetch column location as column order array is unknown")
+			return None
 		return self._getColumnLocationRaw(self.parent._columnOrderArray[column - 1])
 
-	def _getColumnContentRaw(self, index):
+	def _getColumnContentRawInProc(self, index: int) -> Optional[str]:
+		"""Retrieves text for a given column.
+		Note that this method operates in process and cannot be used in situations where NVDA cannot inject
+		i.e when running as a Windows Store application or when no focus event was received on startup.
+		"""
+		item = self.IAccessibleChildID - 1
+		subItem = index
+		text = AutoFreeBSTR()
+		if watchdog.cancellableExecute(
+			NVDAHelper.localLib.nvdaInProcUtils_sysListView32_getColumnContent,
+			self.appModule.helperLocalBindingHandle,
+			self.windowHandle,
+			item,
+			subItem,
+			ctypes.byref(text)
+		) != 0:
+			return None
+		return text.value
+
+	def _getColumnContentRawOutProc(self, index: int) -> Optional[str]:
+		"""Retrieves text for a given column.
+		Note that this method operates out of process and has to reserve memory inside a given application.
+		As a consequence it may fail when reserved memory is above the range available
+		for 32-bit processes.
+		Use only when in process injection is not possible.
+		"""
 		buffer=None
 		processHandle=self.processHandle
 		internalItem=winKernel.virtualAllocEx(processHandle,None,sizeof(self.LVITEM),winKernel.MEM_COMMIT,winKernel.PAGE_READWRITE)
@@ -329,7 +504,15 @@ class ListItem(RowWithFakeNavigation, RowWithoutCellObjects, ListItemWithoutColu
 			winKernel.virtualFreeEx(processHandle,internalItem,0,winKernel.MEM_RELEASE)
 		return buffer.value if buffer else None
 
-	def _getColumnContent(self, column):
+	def _getColumnContentRaw(self, index: int) -> Optional[str]:
+		if not self.appModule.helperLocalBindingHandle:
+			return self._getColumnContentRawOutProc(index)
+		return self._getColumnContentRawInProc(index)
+
+	def _getColumnContent(self, column: int) -> Optional[str]:
+		if self.parent._columnOrderArray is None:
+			log.debugWarning("Cannot fetch column content as column order array is unknown")
+			return None
 		return self._getColumnContentRaw(self.parent._columnOrderArray[column - 1])
 
 	def _getColumnImageIDRaw(self, index):
@@ -347,9 +530,18 @@ class ListItem(RowWithFakeNavigation, RowWithoutCellObjects, ListItemWithoutColu
 		return item.iImage
 
 	def _getColumnImageID(self, column):
+		if self.parent._columnOrderArray is None:
+			log.debugWarning("Cannot fetch column image ID as column order array is unknown")
+			return None
 		return self._getColumnImageIDRaw(self.parent._columnOrderArray[column - 1])
 
-	def _getColumnHeaderRaw(self,index):
+	def _getColumnHeaderRawOutProc(self, index: int) -> Optional[str]:
+		"""Retrieves text of the header for the given column.
+		Note that this method operates out of process and has to reserve memory inside a given application.
+		As a consequence it may fail when reserved memory is above the range available
+		for 32-bit processes.
+		Use only when in process injection is not possible.
+		"""
 		buffer=None
 		processHandle=self.processHandle
 		internalColumn=winKernel.virtualAllocEx(processHandle,None,sizeof(self.LVCOLUMN),winKernel.MEM_COMMIT,winKernel.PAGE_READWRITE)
@@ -369,7 +561,32 @@ class ListItem(RowWithFakeNavigation, RowWithoutCellObjects, ListItemWithoutColu
 			winKernel.virtualFreeEx(processHandle,internalColumn,0,winKernel.MEM_RELEASE)
 		return buffer.value if buffer else None
 
-	def _getColumnHeader(self, column):
+	def _getColumnHeaderRawInProc(self, index: int) -> Optional[str]:
+		"""Retrieves text of the header for the given column.
+		Note that this method operates in process and cannot be used in situations where NVDA cannot inject
+		i.e when running as a Windows Store application or when no focus event was received on startup.
+		"""
+		subItem = index
+		text = AutoFreeBSTR()
+		if watchdog.cancellableExecute(
+			NVDAHelper.localLib.nvdaInProcUtils_sysListView32_getColumnHeader,
+			self.appModule.helperLocalBindingHandle,
+			self.windowHandle,
+			subItem,
+			ctypes.byref(text)
+		) != 0:
+			return None
+		return text.value
+
+	def _getColumnHeaderRaw(self, index: int) -> Optional[str]:
+		if not self.appModule.helperLocalBindingHandle:
+			return self._getColumnHeaderRawOutProc(index)
+		return self._getColumnHeaderRawInProc(index)
+
+	def _getColumnHeader(self, column: int) -> Optional[str]:
+		if self.parent._columnOrderArray is None:
+			log.debugWarning("Cannot fetch column header as column order array is unknown")
+			return None
 		return self._getColumnHeaderRaw(self.parent._columnOrderArray[column - 1])
 
 	def _get_name(self):
@@ -382,7 +599,10 @@ class ListItem(RowWithFakeNavigation, RowWithoutCellObjects, ListItemWithoutColu
 				return self.displayText
 			return name
 		textList = []
-		for col in xrange(1, self.childCount + 1):
+		for col in range(1, self.childCount + 1):
+			location = self._getColumnLocation(col)
+			if location and location.width == 0:
+				continue
 			content = self._getColumnContent(col)
 			if not content:
 				continue
@@ -394,7 +614,10 @@ class ListItem(RowWithFakeNavigation, RowWithoutCellObjects, ListItemWithoutColu
 				textList.append("%s: %s" % (header, content))
 			else:
 				textList.append(content)
-		return "; ".join(textList)
+		name = "; ".join(textList)
+		# Some list view items in Windows Vista and later can contain annoying left-to-right and right-to-left
+		# indicator characters which really should not be there.
+		return name.replace(CHAR_LTR_MARK,'').replace(CHAR_RTL_MARK,'')
 
 	value = None
 

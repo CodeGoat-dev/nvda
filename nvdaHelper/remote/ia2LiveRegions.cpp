@@ -1,7 +1,7 @@
 /*
 This file is a part of the NVDA project.
 URL: http://www.nvda-project.org/
-Copyright 2006-2010 NVDA contributers.
+Copyright 2006-2021 NV Access Limited, Google LLC, Leonard de Ruijter
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License version 2.0, as published by
     the Free Software Foundation.
@@ -16,23 +16,16 @@ http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 #include <sstream>
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <ia2.h>
-#include "nvdaController.h"
+#include <atlcomcli.h>
+#include <remote/nvdaControllerInternal.h>
 #include <common/ia2utils.h>
 #include "nvdaHelperRemote.h"
+#include "textFromIAccessible.h"
 
 using namespace std;
 
-bool fetchIA2Attributes(IAccessible2* pacc2, map<wstring,wstring>& attribsMap) {
-	BSTR attribs=NULL;
-	pacc2->get_attributes(&attribs);
-	if(!attribs) {
-		return false;
-	}
-	IA2AttribsToMap(attribs,attribsMap);
-	SysFreeString(attribs);
-	return true;
-}
+const long NAVRELATION_EMBEDS = 0x1009;
+const long NAVRELATION_CONTAINING_TAB_PANE = 0x1012;
 
 IAccessible2* findAriaAtomic(IAccessible2* pacc2,map<wstring,wstring>& attribsMap) {
 	map<wstring,wstring>::iterator i=attribsMap.find(L"atomic");
@@ -62,135 +55,55 @@ IAccessible2* findAriaAtomic(IAccessible2* pacc2,map<wstring,wstring>& attribsMa
 	return pacc2Atomic;
 }
 
-bool getTextFromIAccessible(wstring& textBuf, IAccessible2* pacc2, bool useNewText=false, bool recurse=true, bool includeTopLevelText=true) {
-	bool gotText=false;
-	IAccessibleText* paccText=NULL;
-	if(pacc2->QueryInterface(IID_IAccessibleText,(void**)&paccText)!=S_OK) {
-		paccText=NULL;
+long getIa2UniqueIdFromDispatchVariant(VARIANT& variant) {
+	if (variant.vt != VT_DISPATCH || !variant.pdispVal) {
+		return 0;
 	}
-	if(!paccText&&recurse&&!useNewText) {
-		//no IAccessibleText interface, so try children instead
-		long childCount=0;
-		if(!useNewText&&pacc2->get_accChildCount(&childCount)==S_OK&&childCount>0) {
-			VARIANT* varChildren=new VARIANT[childCount];
-			AccessibleChildren(pacc2,0,childCount,varChildren,&childCount);
-			for(int i=0;i<childCount;++i) {
-				if(varChildren[i].vt==VT_DISPATCH) {
-					IAccessible2* pacc2Child=NULL;
-					if(varChildren[i].pdispVal&&varChildren[i].pdispVal->QueryInterface(IID_IAccessible2,(void**)&pacc2Child)==S_OK) {
-						map<wstring,wstring> childAttribsMap;
-						fetchIA2Attributes(pacc2Child,childAttribsMap);
-						auto i=childAttribsMap.find(L"live");
-						if(i==childAttribsMap.end()||i->second.compare(L"off")!=0) {
-							if(getTextFromIAccessible(textBuf,pacc2Child)) {
-								gotText=true;
-							}
-						}
-						pacc2Child->Release();
-					}
-				}
-				VariantClear(varChildren+i);
-			}
-			delete [] varChildren;
-		}
-	} else if(paccText) {
-		//We can use IAccessibleText because it exists
-		BSTR bstrText=NULL;
-		long startOffset=0;
-		//If requested, get the text from IAccessibleText::newText rather than just IAccessibleText::text.
-		if(useNewText) {
-			IA2TextSegment newSeg={0};
-			if(paccText->get_newText(&newSeg)==S_OK&&newSeg.text) {
-				bstrText=newSeg.text;
-				startOffset=newSeg.start;
-			}
-		} else {
-			paccText->get_text(0,IA2_TEXT_OFFSET_LENGTH,&bstrText);
-		}
-		//If we got text, add it to  the string provided, however if there are embedded objects in the text, recurse in to these
-		if(bstrText) {
-			long textLength=SysStringLen(bstrText);
-			IAccessibleHypertext* paccHypertext=NULL;
-			if(!recurse||pacc2->QueryInterface(IID_IAccessibleHypertext,(void**)&paccHypertext)!=S_OK) paccHypertext=NULL;
-			for(long index=0;index<textLength;++index) {
-				wchar_t realChar=bstrText[index];
-				bool charAdded=false;
-				if(realChar==L'\xfffc') {
-					long hyperlinkIndex;
-					if(paccHypertext&&paccHypertext->get_hyperlinkIndex(startOffset+index,&hyperlinkIndex)==S_OK) {
-						IAccessibleHyperlink* paccHyperlink=NULL;
-						if(paccHypertext->get_hyperlink(hyperlinkIndex,&paccHyperlink)==S_OK) {
-							IAccessible2* pacc2Child=NULL;
-							if(paccHyperlink->QueryInterface(IID_IAccessible2,(void**)&pacc2Child)==S_OK) {
-								map<wstring,wstring> childAttribsMap;
-								fetchIA2Attributes(pacc2Child,childAttribsMap);
-								auto i=childAttribsMap.find(L"live");
-								if(i==childAttribsMap.end()||i->second.compare(L"off")!=0) {
-									if(getTextFromIAccessible(textBuf,pacc2Child)) {
-										gotText=true;
-									}
-								}
-								charAdded=true;
-								pacc2Child->Release();
-							}
-							paccHyperlink->Release();
-						}
-					}
-				}
-				if(!charAdded&&includeTopLevelText) {
-					textBuf.append(1,realChar);
-					charAdded=true;
-					if(realChar!=L'\xfffc'&&!iswspace(realChar)) {
-						gotText=true;
-					}
-				}
-			}
-			if(paccHypertext) paccHypertext->Release();
-			SysFreeString(bstrText);
-			textBuf.append(1,L' ');
-		}
-		paccText->Release();
+	CComQIPtr<IServiceProvider> serv = variant.pdispVal;
+	if (!serv) {
+		return 0;
 	}
-	if(!gotText&&!useNewText) {
-		//We got no text from IAccessibleText interface or children, so try name and/or description
-		BSTR val=NULL;
-		bool valEmpty=true;
-		VARIANT varChild;
-		varChild.vt=VT_I4;
-		varChild.lVal=0;
-		pacc2->get_accName(varChild,&val);
-		if(val) {
-			for(int i=0;val[i]!=L'\0';++i) {
-				if(val[i]!=L'\xfffc'&&!iswspace(val[i])) {
-					valEmpty=false;
-					break;
-				}
-			}
-			if(!valEmpty) {
-				gotText=true;
-				textBuf.append(val);
-				textBuf.append(L" ");
-			}
-			SysFreeString(val);
-			val=NULL;
-		}
-		valEmpty=true;
-		pacc2->get_accDescription(varChild,&val);
-		if(val) {
-			for(int i=0;val[i]!=L'\0';++i) {
-				if(val[i]!=L'\xfffc'&&!iswspace(val[i])) {
-					valEmpty=false;
-					break;
-				}
-			}
-			if(!valEmpty) {
-				gotText=true;
-				textBuf.append(val);
-			}
-			SysFreeString(val);
-		}
+	CComPtr<IAccessible2> acc;
+	serv->QueryService(IID_IAccessible, IID_IAccessible2, (void**)&acc);
+	if (!acc) {
+		return 0;
 	}
-	return gotText;
+	long id = 0;
+	acc->get_uniqueID(&id);
+	return id;
+}
+
+bool isInBackgroundTab(IAccessible* acc, HWND hwnd) {
+	CComVariant start(0, VT_I4);
+	// Get the tab document for `acc`.
+	CComVariant accDoc;
+	HRESULT hr = acc->accNavigate(NAVRELATION_CONTAINING_TAB_PANE, start, &accDoc);
+	if (FAILED(hr)) {
+		return false;
+	}
+	long accDocId = getIa2UniqueIdFromDispatchVariant(accDoc);
+	if (!accDocId) {
+		return false;
+	}
+	// Get the root accessible for the window.
+	CComPtr<IAccessible> root;
+	AccessibleObjectFromWindow(hwnd, OBJID_CLIENT, IID_IAccessible, (void**)&root);
+	if (!root) {
+		return false;
+	}
+	// Get the foreground tab document by asking the root.
+	CComVariant fgDoc;
+	hr = root->accNavigate(NAVRELATION_EMBEDS, start, &fgDoc);
+	if (FAILED(hr)) {
+		return false;
+	}
+	long fgDocId = getIa2UniqueIdFromDispatchVariant(fgDoc);
+	if (!fgDocId) {
+		return false;
+	}
+	// If `acc`'s document is not the foreground document, `acc` is in a background
+	// tab.
+	return accDocId != fgDocId;
 }
 
 void CALLBACK winEventProcHook(HWINEVENTHOOK hookID, DWORD eventID, HWND hwnd, long objectID, long childID, DWORD threadID, DWORD time) { 
@@ -217,15 +130,13 @@ void CALLBACK winEventProcHook(HWINEVENTHOOK hookID, DWORD eventID, HWND hwnd, l
 		return;
 	}
 	//Retreave the object states, and if its invisible or offscreen ignore the event.
-	VARIANT varState;
+	CComVariant varState;
 	pacc->get_accState(varChild,&varState);
 	VariantClear(&varChild);
 	if(varState.vt==VT_I4&&(varState.lVal&STATE_SYSTEM_INVISIBLE)) {
-		VariantClear(&varState);
 		pacc->Release();
 		return;
 	}
-	VariantClear(&varState);
 	//Retreave an IAccessible2 via IServiceProvider if it exists.
 	pacc->QueryInterface(IID_IServiceProvider,(void**)(&pserv));
 	pacc->Release();
@@ -245,6 +156,17 @@ void CALLBACK winEventProcHook(HWINEVENTHOOK hookID, DWORD eventID, HWND hwnd, l
 		pacc2->Release();
 		return;
 	}
+	// #1318: In Firefox, all tabs have the same HWND. Objects in background
+	// tabs do get the offscreen state, but offscreen live regions are used to
+	// report visually hidden information, so we can't filter based on that.
+	// Therefore, if the offscreen state is set, we do an additional background
+	// check.
+	if (varState.vt==VT_I4 && varState.lVal & STATE_SYSTEM_OFFSCREEN
+			&& isInBackgroundTab(pacc2, hwnd)) {
+		pacc2->Release();
+		return;
+	}
+	wstring politeness = i->second;
 	i=attribsMap.find(L"container-busy");
 	bool busy=(i!=attribsMap.end()&&i->second.compare(L"true")==0);
 	if(busy) {
@@ -347,7 +269,9 @@ void CALLBACK winEventProcHook(HWINEVENTHOOK hookID, DWORD eventID, HWND hwnd, l
 		gotText=getTextFromIAccessible(textBuf,pacc2,true,allowAdditions,allowText);
 	}
 	pacc2->Release();
-	if(gotText&&!textBuf.empty()) nvdaController_speakText(textBuf.c_str());
+	if (gotText && !textBuf.empty()) {
+		nvdaControllerInternal_reportLiveRegion(textBuf.c_str(), politeness.c_str());
+	}
 }
 
 void ia2LiveRegions_inProcess_initialize() {

@@ -70,6 +70,7 @@ displayModelRPCHeader,displayModelRPCClientSource=env.MSRPCStubs(
 localLib=env.SharedLibrary(
 	target="nvdaHelperLocal",
 	source=[
+		env['projectResFile'],
 		"nvdaHelperLocal.cpp",
 		"beeps.cpp",
 		vbufRPCClientSource,
@@ -86,6 +87,7 @@ localLib=env.SharedLibrary(
 		"textUtils.cpp",
 		"UIAUtils.cpp",
 		"mixer.cpp",
+		"oleUtils.cpp",
 	],
 	LIBS=[
 		"advapi32.lib",

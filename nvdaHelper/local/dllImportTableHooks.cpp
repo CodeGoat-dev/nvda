@@ -66,6 +66,10 @@ BOOL DllImportTableHooks::hookFunctions() {
 }
 
 void* DllImportTableHooks::requestFunctionHook(const char* moduleName, const char* functionName, void* newHookProc) {
+	if (!moduleName) {
+		LOG_ERROR(L"apiHook_requestFunctionHook: nullptr given for moduleName\n");
+		return nullptr;
+	}
 	HMODULE moduleHandle=GetModuleHandleA(moduleName);
 	if(!moduleHandle) {
 		LOG_ERROR(L"apiHook_requestFunctionHook: module " << moduleName << L" not loaded\n");
@@ -99,7 +103,7 @@ BOOL DllImportTableHooks::unhookFunctions() {
 		return TRUE;
 	}
 	LOG_DEBUG(L"apiHook_unhookFunctions: unhooking functions on module at address 0X" << targetModule << L"\n");
-	for(funcToThunk_t::iterator i=this->hookedFunctions.begin();i!=this->hookedFunctions.end();i++) {
+	for(funcToThunk_t::iterator i=this->hookedFunctions.begin();i!=this->hookedFunctions.end();++i) {
 		LOG_DEBUG(L"apiHook_unhookFunctions: restoring thunk at address 0X" << i->second << L" back to original function at address 0X" << i->first << L"\n");
 		DWORD oldProtect;
 		VirtualProtect(i->second,sizeof(IMAGE_THUNK_DATA),PAGE_READWRITE,&oldProtect);
